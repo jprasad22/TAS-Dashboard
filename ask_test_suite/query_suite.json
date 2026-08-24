@@ -1,0 +1,458 @@
+{
+  "_readme": "Every entry: query text, and an expectation. expect='answer' means it must return a non-null result (a real answer or a clarifying question -- both count as 'the bot understood something'). expect='null' means it must NOT match anything (a genuinely unanswerable or out-of-scope query -- returning an answer here would be a false positive, same bug class as the who-has-Jerome-beat incident). contains (optional) is a substring that must appear in the answer, for cases where 'it answered SOMETHING' isn't enough -- e.g. confirming direction (least vs most) or which manager. not_contains (optional) catches the opposite: a substring that must NOT appear, for confirming a wrong-direction or wrong-branch answer didn't sneak back in.",
+  "h2h": [
+    {
+      "q": "What is the head to head record between Jerome and Gurminder?",
+      "expect": "answer"
+    },
+    {
+      "q": "Ben vs Brad head to head",
+      "expect": "answer"
+    },
+    {
+      "q": "Jerome Prasad vs Romie Jassal",
+      "expect": "answer"
+    },
+    {
+      "q": "compare Stuart and Mike",
+      "expect": "answer"
+    },
+    {
+      "q": "Josh vs Jazz record",
+      "expect": "answer"
+    },
+    {
+      "q": "how have Jerome and Gurminder done against each other",
+      "expect": "answer"
+    }
+  ],
+  "drafted_player_lookup": [
+    {
+      "q": "who drafted Justin Jefferson",
+      "expect": "answer"
+    },
+    {
+      "q": "who picked Josh Allen",
+      "expect": "answer"
+    },
+    {
+      "q": "who took Christian McCaffrey",
+      "expect": "answer"
+    }
+  ],
+  "manager_draft_year": [
+    {
+      "q": "what did Jerome draft in 2020",
+      "expect": "answer"
+    },
+    {
+      "q": "Jerome's 2018 draft picks",
+      "expect": "answer"
+    }
+  ],
+  "draft_order": [
+    {
+      "q": "what is the draft order",
+      "expect": "answer"
+    },
+    {
+      "q": "when is the draft order determined",
+      "expect": "answer",
+      "contains": "Mike Gostlin"
+    },
+    {
+      "q": "who picks first",
+      "expect": "answer"
+    },
+    {
+      "q": "draft order 2020",
+      "expect": "answer"
+    }
+  ],
+  "draft_date_time": [
+    {
+      "q": "when is the draft",
+      "expect": "answer",
+      "contains": "Sep 7, 2026"
+    },
+    {
+      "q": "what time is the draft",
+      "expect": "answer",
+      "contains": "6:30"
+    },
+    {
+      "q": "draft date",
+      "expect": "answer"
+    }
+  ],
+  "season_champion": [
+    {
+      "q": "who won the 2020 championship",
+      "expect": "answer"
+    },
+    {
+      "q": "2015 champion",
+      "expect": "answer"
+    },
+    {
+      "q": "who was the sacko in 2019",
+      "expect": "answer"
+    }
+  ],
+  "career_power_score_per_manager": [
+    {
+      "q": "Jerome's power score",
+      "expect": "answer"
+    },
+    {
+      "q": "what's Jerome's power score in 2020",
+      "expect": "answer"
+    },
+    {
+      "q": "On average, what is Jerome's power ranking over all of the seasons?",
+      "expect": "answer"
+    },
+    {
+      "q": "What is Jerome's career power score?",
+      "expect": "answer"
+    },
+    {
+      "q": "Jerome's overall power rank",
+      "expect": "answer"
+    }
+  ],
+  "power_score_leader": [
+    {
+      "q": "who has the best power score",
+      "expect": "answer"
+    },
+    {
+      "q": "who has the best power score in 2025",
+      "expect": "answer"
+    },
+    {
+      "q": "who has the best average power score",
+      "expect": "answer"
+    }
+  ],
+  "power_score_ambiguous_clarify": [
+    {
+      "q": "what is the power score this season",
+      "expect": "answer",
+      "contains": "not whose"
+    },
+    {
+      "q": "Jerome and Ben championships",
+      "expect": "answer",
+      "contains": "not whose"
+    }
+  ],
+  "keeper_history_per_manager": [
+    {
+      "q": "Who has Jerome kept over the years?",
+      "expect": "answer"
+    },
+    {
+      "q": "what did Jerome keep in 2018",
+      "expect": "answer"
+    },
+    {
+      "q": "who has Stuart kept",
+      "expect": "answer"
+    }
+  ],
+  "keeper_rules_settings": [
+    {
+      "q": "how does the keeper rule work",
+      "expect": "answer"
+    },
+    {
+      "q": "how many years can I keep a player",
+      "expect": "answer"
+    },
+    {
+      "q": "keeper cost",
+      "expect": "answer"
+    }
+  ],
+  "best_value_keeper": [
+    {
+      "q": "best value keeper",
+      "expect": "answer"
+    },
+    {
+      "q": "best keeper pick",
+      "expect": "answer"
+    }
+  ],
+  "roster_lookup_per_manager": [
+    {
+      "q": "what does Jerome have on his roster",
+      "expect": "answer"
+    },
+    {
+      "q": "who does Jerome have",
+      "expect": "answer"
+    },
+    {
+      "q": "Jerome's roster",
+      "expect": "answer"
+    },
+    {
+      "q": "Jerome's team",
+      "expect": "answer"
+    }
+  ],
+  "roster_false_positive_regression": [
+    {
+      "q": "Who has Jerome beat the boys over all the seasons combined",
+      "expect": "null"
+    },
+    {
+      "q": "Who has Jerome beat the most over all the seasons combined",
+      "expect": "null"
+    },
+    {
+      "q": "who has Jerome ever lost to the most",
+      "expect": "null"
+    }
+  ],
+  "career_stat_lookups_most": [
+    {
+      "q": "who has the most points for all time?",
+      "expect": "answer",
+      "contains": "Jerome Prasad"
+    },
+    {
+      "q": "What is Jerome's career points for?",
+      "expect": "answer"
+    },
+    {
+      "q": "Who has the best point differential?",
+      "expect": "answer"
+    },
+    {
+      "q": "How many championships has Jerome won?",
+      "expect": "answer"
+    },
+    {
+      "q": "Who has the most championships?",
+      "expect": "answer"
+    },
+    {
+      "q": "How many playoff wins does Jerome have?",
+      "expect": "answer"
+    },
+    {
+      "q": "Who has the most playoff wins?",
+      "expect": "answer"
+    },
+    {
+      "q": "How many times has Jerome been the sacko?",
+      "expect": "answer"
+    },
+    {
+      "q": "career sacko",
+      "expect": "answer"
+    }
+  ],
+  "career_stat_lookups_least_direction_regression": [
+    {
+      "q": "Who has the least points for all time?",
+      "expect": "answer",
+      "contains": "Fewest",
+      "not_contains": "leader: Jerome Prasad"
+    },
+    {
+      "q": "who has the fewest championships",
+      "expect": "answer"
+    },
+    {
+      "q": "lowest point differential",
+      "expect": "answer"
+    }
+  ],
+  "career_wins_points_leaders_legacy": [
+    {
+      "q": "who has the most career wins",
+      "expect": "answer"
+    },
+    {
+      "q": "most career points",
+      "expect": "answer"
+    },
+    {
+      "q": "winningest manager",
+      "expect": "answer"
+    },
+    {
+      "q": "bridesmaid",
+      "expect": "answer"
+    }
+  ],
+  "typo_tolerant_matching": [
+    {
+      "q": "Gurminderr power score",
+      "expect": "answer"
+    },
+    {
+      "q": "Jaz vs Jerome record",
+      "expect": "answer"
+    },
+    {
+      "q": "How many wins does Jerom have",
+      "expect": "answer"
+    },
+    {
+      "q": "Stuartt Duncann keeper history",
+      "expect": "answer"
+    },
+    {
+      "q": "Macc kept",
+      "expect": "answer"
+    }
+  ],
+  "fuzzy_false_positive_regression": [
+    {
+      "q": "how has Jerome been doing lately",
+      "expect": "null"
+    },
+    {
+      "q": "who has the most points",
+      "expect": "answer"
+    },
+    {
+      "q": "what is the power score this season",
+      "expect": "answer"
+    }
+  ],
+  "league_settings_scoring": [
+    {
+      "q": "how many points per reception",
+      "expect": "answer"
+    },
+    {
+      "q": "what is the scoring for a passing touchdown",
+      "expect": "answer"
+    },
+    {
+      "q": "ppr value",
+      "expect": "answer"
+    }
+  ],
+  "league_settings_roster": [
+    {
+      "q": "how many bench spots are there",
+      "expect": "answer"
+    },
+    {
+      "q": "roster settings",
+      "expect": "answer"
+    },
+    {
+      "q": "starting lineup requirements",
+      "expect": "answer"
+    }
+  ],
+  "league_settings_draft_pick_rules": [
+    {
+      "q": "can I trade draft picks",
+      "expect": "answer"
+    },
+    {
+      "q": "how many picks can I trade",
+      "expect": "answer"
+    },
+    {
+      "q": "pick for pick rule",
+      "expect": "answer"
+    },
+    {
+      "q": "future pick trading rules",
+      "expect": "answer"
+    }
+  ],
+  "league_settings_general_2026_new": [
+    {
+      "q": "what is the toilet bowl punishment",
+      "expect": "answer"
+    },
+    {
+      "q": "tell me about the competitive lineup rule",
+      "expect": "answer"
+    },
+    {
+      "q": "how does trade review work",
+      "expect": "answer"
+    },
+    {
+      "q": "what is the FAAB budget",
+      "expect": "answer"
+    },
+    {
+      "q": "what are the league settings",
+      "expect": "answer"
+    }
+  ],
+  "tiebreakers": [
+    {
+      "q": "how are tiebreakers determined",
+      "expect": "answer"
+    },
+    {
+      "q": "how do playoff tiebreakers work",
+      "expect": "answer"
+    },
+    {
+      "q": "playoff seeding",
+      "expect": "answer"
+    }
+  ],
+  "current_season_dates": [
+    {
+      "q": "what is the fee",
+      "expect": "answer",
+      "contains": "$175"
+    },
+    {
+      "q": "when is the keeper lock deadline",
+      "expect": "answer"
+    },
+    {
+      "q": "when is the trade deadline",
+      "expect": "answer"
+    }
+  ],
+  "genuinely_unanswerable_should_stay_null": [
+    {
+      "q": "how has Jerome been doing?",
+      "expect": "null"
+    },
+    {
+      "q": "is this a good league",
+      "expect": "null"
+    },
+    {
+      "q": "what should I do this week",
+      "expect": "null"
+    }
+  ],
+  "winpct_per_manager": [
+    {
+      "q": "How many wins does Jerome have all time?",
+      "expect": "answer"
+    },
+    {
+      "q": "how many wins does Jerome have",
+      "expect": "answer"
+    },
+    {
+      "q": "how many losses does Jerome have",
+      "expect": "answer"
+    },
+    {
+      "q": "win total for Jerome",
+      "expect": "answer"
+    }
+  ]
+}
