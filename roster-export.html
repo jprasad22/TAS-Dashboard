@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tobermory Roster Export</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bevan&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root {
+    --ink: #1c2b21;
+    --slate: #fffbf2;
+    --chalk: #f5eedc;
+    --chalk-dim: #8a7a60;
+    --amber: #c2661a;
+    --line: #e3d5b5;
+    --danger: #8c2f1e;
+    --good: #3f7a4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 60px;
+    background: var(--chalk); color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    max-width: 780px;
+  }
+  @media (min-width: 820px) { body { margin: 0 auto; } }
+  h1 {
+    font-family: 'Bevan'; font-size: 22px; letter-spacing: 0.5px;
+    margin: 0 0 4px;
+  }
+  .subtitle { color: var(--chalk-dim); font-size: 12.5px; line-height: 1.5; margin-bottom: 22px; max-width: 640px; }
+  .card {
+    background: var(--slate); border: 1px solid var(--line); border-radius: 4px;
+    padding: 20px;
+  }
+  button {
+    font-family: 'JetBrains Mono'; font-weight: 600; font-size: 13px;
+    background: var(--amber); color: var(--slate); border: none;
+    padding: 10px 18px; border-radius: 3px; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  #status { font-size: 12.5px; color: var(--chalk-dim); margin: 12px 0 0; }
+  #status.error { color: var(--danger); }
+  #status.done { color: var(--good); }
+  #output { margin-top: 16px; }
+  textarea {
+    width: 100%; min-height: 440px; box-sizing: border-box;
+    font-family: 'JetBrains Mono'; font-size: 12px; line-height: 1.5;
+    background: var(--chalk); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 3px; padding: 12px; resize: vertical;
+  }
+  .actions { margin-top: 10px; display: flex; gap: 12px; align-items: center; }
+  #copyStatus { font-size: 12px; color: var(--good); }
+</style>
+</head>
+<body>
+  <h1>Tobermory Roster Export</h1>
+  <div class="subtitle">
+    Pulls all 12 rosters live from Sleeper, resolves player IDs into real names, and gives you
+    one clean block of text to paste into a chat with Claude. Deliberately kept off the main
+    dashboard and out of its navigation &mdash; this page alone fetches Sleeper's full player
+    database (a genuinely large file), so it never adds that cost to a regular visitor's page load.
+  </div>
+
+  <div class="card">
+    <button id="fetchBtn">Fetch Rosters</button>
+    <div id="status">Click to pull live data from Sleeper. The player database is a few MB, so this can take several seconds.</div>
+    <div id="output" style="display:none;">
+      <textarea id="rosterText" readonly spellcheck="false"></textarea>
+      <div class="actions">
+        <button id="copyBtn">Copy to Clipboard</button>
+        <span id="copyStatus"></span>
+      </div>
+    </div>
+  </div>
+
+<script>
+const SLEEPER_LEAGUE_ID = "1358592254683402240";
+
+// Same mapping used in the main dashboard (SLEEPER_USERNAME_TO_MANAGER) -- kept as a manual
+// duplicate here, not a shared import, since this is a deliberately standalone file with no
+// build step. If a manager's Sleeper username ever changes, or a new manager joins, update both
+// this copy and the one in tobermory-dashboard.html -- they won't sync automatically.
+const SLEEPER_USERNAME_TO_MANAGER = {
+  'jprasad': 'Jerome Prasad',
+  'gkambo': 'Gurminder Kambo',
+  'gostlinm': 'Mike Gostlin',
+  'MambaMacDadBod': 'Mac James',
+  'callmebenjamin': 'Ben Matsumoto',
+  'stuchoo123': 'Stuart Duncan',
+  'ianysingh': 'Ian Singh',
+  'f33J': 'Josh Dass',
+  'romiejassal': 'Romie Jassal',
+  'lucblair': 'Lucas Blair',
+  'JasDhillon7': 'Jazz Dhillon',
+  'heroharnum': 'Brad Harnum',
+};
+
+async function fetchSleeperJson(path) {
+  const res = await fetch(`https://api.sleeper.app/v1/${path}`);
+  if (!res.ok) throw new Error('sleeper ' + path + ' failed: ' + res.status);
+  return res.json();
+}
+
+const statusEl = document.getElementById('status');
+const fetchBtn = document.getElementById('fetchBtn');
+const outputEl = document.getElementById('output');
+const textareaEl = document.getElementById('rosterText');
+const copyBtn = document.getElementById('copyBtn');
+const copyStatusEl = document.getElementById('copyStatus');
+
+fetchBtn.addEventListener('click', async () => {
+  fetchBtn.disabled = true;
+  statusEl.className = '';
+  statusEl.textContent = 'Fetching rosters and users from Sleeper...';
+  outputEl.style.display = 'none';
+
+  try {
+    const [rosters, users] = await Promise.all([
+      fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/rosters`),
+      fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/users`),
+    ]);
+
+    statusEl.textContent = 'Fetching the full NFL player database (~5MB) to resolve player names -- this is the slow part...';
+    const players = await fetchSleeperJson('players/nfl');
+
+    const userById = {};
+    users.forEach(u => { userById[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
+
+    const managerRosters = rosters.map(r => {
+      const manager = userById[r.owner_id] || `Roster ${r.roster_id}`;
+      const playerIds = r.players || [];
+      const startersSet = new Set(r.starters || []);
+      const playerLines = playerIds.map(pid => {
+        const p = players[pid];
+        const name = p ? (p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim()) : null;
+        const label = name || `Unknown player (id ${pid})`;
+        const pos = p && p.position ? p.position : '?';
+        const team = p && p.team ? p.team : 'FA';
+        const starterTag = startersSet.has(pid) ? '  [STARTER]' : '';
+        return `  ${label} (${pos} - ${team})${starterTag}`;
+      });
+      return { manager, playerLines };
+    });
+
+    managerRosters.sort((a, b) => a.manager.localeCompare(b.manager));
+
+    const text = managerRosters
+      .map(({ manager, playerLines }) => `${manager}:\n${playerLines.join('\n')}`)
+      .join('\n\n');
+
+    textareaEl.value = text;
+    outputEl.style.display = '';
+    statusEl.className = 'done';
+    statusEl.textContent = `Done -- ${managerRosters.length} rosters pulled, ${Object.keys(players).length.toLocaleString()} players in Sleeper's database.`;
+  } catch (e) {
+    statusEl.className = 'error';
+    statusEl.textContent = `Couldn't fetch roster data: ${e.message}. If this keeps happening, try again in a bit -- could be a temporary Sleeper API hiccup.`;
+  } finally {
+    fetchBtn.disabled = false;
+  }
+});
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(textareaEl.value);
+    copyStatusEl.textContent = 'Copied!';
+  } catch (e) {
+    textareaEl.select();
+    document.execCommand('copy');
+    copyStatusEl.textContent = 'Copied!';
+  }
+  setTimeout(() => { copyStatusEl.textContent = ''; }, 2000);
+});
+</script>
+</body>
+</html>
