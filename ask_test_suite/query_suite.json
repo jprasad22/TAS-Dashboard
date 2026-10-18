@@ -1,5 +1,5 @@
 {
-  "_readme": "Every entry: query text, and an expectation. expect='answer' means it must return a non-null result (a real answer or a clarifying question -- both count as 'the bot understood something'). expect='null' means it must NOT match anything (a genuinely unanswerable or out-of-scope query -- returning an answer here would be a false positive, same bug class as the who-has-Jerome-beat incident). contains (optional) is a substring that must appear in the answer, for cases where 'it answered SOMETHING' isn't enough -- e.g. confirming direction (least vs most) or which manager. not_contains (optional) catches the opposite: a substring that must NOT appear, for confirming a wrong-direction or wrong-branch answer didn't sneak back in. Placeholders like {LATEST_FINISHED_SEASON} in contains/not_contains are resolved from raw.json at run time (see run_ask_tests.py).",
+  "_readme": "Every entry: query text, and an expectation. expect='answer' means it must return a non-null result (a real answer or a clarifying question -- both count as 'the bot understood something'). expect='null' means it must NOT match anything (a genuinely unanswerable or out-of-scope query -- returning an answer here would be a false positive, same bug class as the who-has-Jerome-beat incident). contains (optional) is a substring that must appear in the answer, for cases where 'it answered SOMETHING' isn't enough -- e.g. confirming direction (least vs most) or which manager. not_contains (optional) catches the opposite: a substring that must NOT appear, for confirming a wrong-direction or wrong-branch answer didn't sneak back in. Placeholders like {LATEST_FINISHED_SEASON} in contains/not_contains are resolved from raw.json at run time (see run_ask_tests.py). suggest (optional, null cases only): the miss must also come with at least one 'Did you mean' suggestion. The runner reports failures in three classes: WRONG (answered when it shouldn't have, or the answer failed contains/not_contains -- the serious kind), MISSED (no answer where one was expected), ERROR (threw).",
   "h2h": [
     {
       "q": "What is the head to head record between Jerome and Gurminder?",
@@ -769,6 +769,1008 @@
       "q": "who has the most championships",
       "expect": "answer",
       "contains": "(tied)"
+    }
+  ],
+  "single_game_records": [
+    {
+      "q": "highest score ever",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "what is the highest single week score",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "who had the best week ever",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "highest score in a single game",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "most points in one week",
+      "expect": "answer",
+      "contains": "single-week score ever",
+      "not_contains": "career"
+    },
+    {
+      "q": "best weekly score of all time",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "what's the record for points in a week",
+      "expect": "answer",
+      "contains": "single-week score ever"
+    },
+    {
+      "q": "lowest score ever",
+      "expect": "answer",
+      "contains": "21.30"
+    },
+    {
+      "q": "worst single week score",
+      "expect": "answer",
+      "contains": "Lowest single-week"
+    },
+    {
+      "q": "lowest scoring week ever",
+      "expect": "answer",
+      "contains": "Lowest single-week"
+    },
+    {
+      "q": "Jerome's highest score",
+      "expect": "answer",
+      "contains": "Jerome Prasad's highest score"
+    },
+    {
+      "q": "Mac's best game",
+      "expect": "answer",
+      "contains": "Mac James's highest score"
+    },
+    {
+      "q": "Jerome's worst game",
+      "expect": "answer",
+      "contains": "Jerome Prasad's lowest score"
+    },
+    {
+      "q": "Brad's highest single week",
+      "expect": "answer",
+      "contains": "Brad Harnum's highest score"
+    },
+    {
+      "q": "highest score in 2025",
+      "expect": "answer",
+      "contains": "186.18"
+    },
+    {
+      "q": "lowest score in 2024",
+      "expect": "answer",
+      "contains": "55.80"
+    },
+    {
+      "q": "highest playoff score",
+      "expect": "answer",
+      "contains": "(playoffs)"
+    },
+    {
+      "q": "highest score in the playoffs",
+      "expect": "answer",
+      "contains": "(playoffs)"
+    },
+    {
+      "q": "lowest regular season score",
+      "expect": "answer",
+      "contains": "(regular season)"
+    },
+    {
+      "q": "Jerome's highest regular season score",
+      "expect": "answer",
+      "contains": "Jerome Prasad's highest score ever (regular season)"
+    },
+    {
+      "q": "highest score in week 3",
+      "expect": "answer",
+      "contains": "Week 3"
+    },
+    {
+      "q": "top score this season",
+      "expect": "answer",
+      "contains": "in 2026"
+    },
+    {
+      "q": "biggest win ever",
+      "expect": "answer",
+      "contains": "Biggest blowout"
+    },
+    {
+      "q": "biggest blowout of all time",
+      "expect": "answer",
+      "contains": "Biggest blowout"
+    },
+    {
+      "q": "Brad's biggest win",
+      "expect": "answer",
+      "contains": "Brad Harnum's biggest win"
+    },
+    {
+      "q": "Ian's worst loss",
+      "expect": "answer",
+      "contains": "Ian Singh's worst loss"
+    },
+    {
+      "q": "closest game ever",
+      "expect": "answer",
+      "contains": "0.04"
+    },
+    {
+      "q": "narrowest win ever",
+      "expect": "answer",
+      "contains": "Closest game"
+    },
+    {
+      "q": "closest game in 2025",
+      "expect": "answer",
+      "contains": "0.26"
+    }
+  ],
+  "points_against": [
+    {
+      "q": "who has the most points against",
+      "expect": "answer",
+      "contains": "Most points against"
+    },
+    {
+      "q": "most points against all time",
+      "expect": "answer",
+      "contains": "Most points against"
+    },
+    {
+      "q": "who has had the most points scored against them",
+      "expect": "answer",
+      "contains": "Most points against"
+    },
+    {
+      "q": "least points against",
+      "expect": "answer",
+      "contains": "Fewest points against"
+    },
+    {
+      "q": "fewest points allowed",
+      "expect": "answer",
+      "contains": "Fewest points against"
+    },
+    {
+      "q": "points against leader 2025",
+      "expect": "answer",
+      "contains": "Ben Matsumoto"
+    },
+    {
+      "q": "most points against in 2024",
+      "expect": "answer",
+      "contains": "Gurminder Kambo"
+    },
+    {
+      "q": "Jerome's points against",
+      "expect": "answer",
+      "contains": "Jerome Prasad's points against"
+    },
+    {
+      "q": "how many points have been scored against Brad",
+      "expect": "answer",
+      "contains": "Brad Harnum's points against",
+      "not_contains": "Passing"
+    }
+  ],
+  "points_per_game": [
+    {
+      "q": "who averages the most points per game",
+      "expect": "answer",
+      "contains": "Highest points per game"
+    },
+    {
+      "q": "highest ppg all time",
+      "expect": "answer",
+      "contains": "Highest points per game"
+    },
+    {
+      "q": "lowest points per game",
+      "expect": "answer",
+      "contains": "Lowest points per game"
+    },
+    {
+      "q": "Jerome's average points per game",
+      "expect": "answer",
+      "contains": "Jerome Prasad averages"
+    },
+    {
+      "q": "average score per week 2025",
+      "expect": "answer",
+      "contains": "League average in 2025"
+    },
+    {
+      "q": "best scoring average",
+      "expect": "answer",
+      "contains": "Highest points per game"
+    },
+    {
+      "q": "what's the league average score",
+      "expect": "answer",
+      "contains": "League average"
+    }
+  ],
+  "streaks": [
+    {
+      "q": "longest winning streak",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    },
+    {
+      "q": "who has the longest win streak",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    },
+    {
+      "q": "longest losing streak",
+      "expect": "answer",
+      "contains": "losing streak"
+    },
+    {
+      "q": "who had the worst losing streak",
+      "expect": "answer",
+      "contains": "losing streak"
+    },
+    {
+      "q": "Jerome's longest winning streak",
+      "expect": "answer",
+      "contains": "Jerome Prasad's longest winning streak"
+    },
+    {
+      "q": "Brad's longest losing streak",
+      "expect": "answer",
+      "contains": "Brad Harnum's longest losing streak"
+    },
+    {
+      "q": "current winning streak",
+      "expect": "answer",
+      "contains": "current winning streak"
+    },
+    {
+      "q": "who is on the longest current losing streak",
+      "expect": "answer",
+      "contains": "current losing streak"
+    },
+    {
+      "q": "Jerome's current streak",
+      "expect": "answer",
+      "contains": "Jerome Prasad's current"
+    },
+    {
+      "q": "longest win streak in 2021",
+      "expect": "answer",
+      "contains": "in 2021"
+    },
+    {
+      "q": "most wins in a row",
+      "expect": "answer",
+      "contains": "winning streak"
+    },
+    {
+      "q": "most losses in a row",
+      "expect": "answer",
+      "contains": "losing streak"
+    }
+  ],
+  "week_lookups": [
+    {
+      "q": "week 3 results",
+      "expect": "answer",
+      "contains": "2026 Week 3"
+    },
+    {
+      "q": "what happened in week 5",
+      "expect": "answer",
+      "contains": "2026 Week 5"
+    },
+    {
+      "q": "week 1 scores",
+      "expect": "answer",
+      "contains": "2026 Week 1"
+    },
+    {
+      "q": "2025 week 10 results",
+      "expect": "answer",
+      "contains": "2025 Week 10"
+    },
+    {
+      "q": "who won in week 2",
+      "expect": "answer",
+      "contains": "2026 Week 2"
+    },
+    {
+      "q": "week 14 2024",
+      "expect": "answer",
+      "contains": "2024 Week 14"
+    },
+    {
+      "q": "Jerome week 3",
+      "expect": "answer",
+      "contains": "Jerome Prasad beat Brad Harnum"
+    },
+    {
+      "q": "2024 week 16",
+      "expect": "answer",
+      "contains": "(playoffs)"
+    },
+    {
+      "q": "what was the line for week 6",
+      "expect": "answer",
+      "contains": "Week 6",
+      "not_contains": "Gurminder"
+    }
+  ],
+  "champions_and_droughts": [
+    {
+      "q": "list of champions",
+      "expect": "answer",
+      "contains": "2012: Mac James"
+    },
+    {
+      "q": "who has won the championship",
+      "expect": "answer",
+      "contains": "2016: Jerome Prasad"
+    },
+    {
+      "q": "all-time champions",
+      "expect": "answer",
+      "contains": "League champions"
+    },
+    {
+      "q": "every champion",
+      "expect": "answer",
+      "contains": "League champions"
+    },
+    {
+      "q": "who has never won a championship",
+      "expect": "answer",
+      "contains": "Ian Singh, Jazz Dhillon"
+    },
+    {
+      "q": "which managers have never won a title",
+      "expect": "answer",
+      "contains": "Never won"
+    },
+    {
+      "q": "has Jazz ever won a title",
+      "expect": "answer",
+      "contains": "Jazz Dhillon hasn't won"
+    },
+    {
+      "q": "has Ben never won",
+      "expect": "answer",
+      "contains": "Ben Matsumoto has won 2"
+    },
+    {
+      "q": "who has the longest championship drought",
+      "expect": "answer",
+      "contains": "Longest title droughts"
+    },
+    {
+      "q": "longest title drought",
+      "expect": "answer",
+      "contains": "never won"
+    },
+    {
+      "q": "when did Jerome last win a title",
+      "expect": "answer",
+      "contains": "2016"
+    },
+    {
+      "q": "Mac's title drought",
+      "expect": "answer",
+      "contains": "Mac James last won in 2012"
+    },
+    {
+      "q": "who won in 2019",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    },
+    {
+      "q": "who won the title in 2023",
+      "expect": "answer",
+      "contains": "Josh Dass"
+    }
+  ],
+  "standings_and_team_names": [
+    {
+      "q": "current standings",
+      "expect": "answer",
+      "contains": "standings through Week"
+    },
+    {
+      "q": "standings",
+      "expect": "answer",
+      "contains": "standings through Week"
+    },
+    {
+      "q": "2026 standings",
+      "expect": "answer",
+      "contains": "2026 standings"
+    },
+    {
+      "q": "league table",
+      "expect": "answer",
+      "contains": "standings"
+    },
+    {
+      "q": "2025 final standings",
+      "expect": "answer",
+      "contains": "1. Brad Harnum"
+    },
+    {
+      "q": "who was Show me Your TDs",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    },
+    {
+      "q": "whose team is Show me Your TDs",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    },
+    {
+      "q": "what team name did Romie use",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    }
+  ],
+  "luck_and_how_many_times": [
+    {
+      "q": "who is the unluckiest manager",
+      "expect": "answer",
+      "contains": "Unluckiest"
+    },
+    {
+      "q": "luckiest manager",
+      "expect": "answer",
+      "contains": "Luckiest"
+    },
+    {
+      "q": "who has been the luckiest",
+      "expect": "answer",
+      "contains": "Luckiest"
+    },
+    {
+      "q": "luck index",
+      "expect": "answer",
+      "contains": "luck index"
+    },
+    {
+      "q": "Jerome's luck",
+      "expect": "answer",
+      "contains": "Jerome Prasad's luck index"
+    },
+    {
+      "q": "how many times has Jerome won",
+      "expect": "answer",
+      "contains": "1 championship (2016)"
+    },
+    {
+      "q": "how many championships does Brad have",
+      "expect": "answer",
+      "contains": "2 titles"
+    },
+    {
+      "q": "how many titles has Mac won",
+      "expect": "answer",
+      "contains": "1 title"
+    }
+  ],
+  "player_keepers_and_rosters": [
+    {
+      "q": "has anyone kept Josh Allen",
+      "expect": "answer",
+      "contains": "Mac James"
+    },
+    {
+      "q": "who kept Justin Jefferson",
+      "expect": "answer",
+      "contains": "2023 by Josh Dass"
+    },
+    {
+      "q": "Ja'Marr Chase keeper history",
+      "expect": "answer",
+      "contains": "Stuart Duncan"
+    },
+    {
+      "q": "who has Josh Allen",
+      "expect": "answer",
+      "contains": "Mac James",
+      "not_contains": "Josh Dass"
+    },
+    {
+      "q": "who had Mike Evans",
+      "expect": "answer",
+      "contains": "Mac James"
+    },
+    {
+      "q": "who drafted Josh Allen",
+      "expect": "answer",
+      "contains": "Romie Jassal"
+    }
+  ],
+  "h2h_and_playoffs_paraphrases": [
+    {
+      "q": "is Jerome better than Ben",
+      "expect": "answer",
+      "contains": "You can decide"
+    },
+    {
+      "q": "who is better Brad or Mac",
+      "expect": "answer",
+      "contains": "Head to head, Brad Harnum"
+    },
+    {
+      "q": "Jerome vs Ben in the playoffs",
+      "expect": "answer",
+      "contains": "3-1 all-time in the playoffs"
+    },
+    {
+      "q": "Jerome vs Ben regular season",
+      "expect": "answer",
+      "contains": "8-6 all-time in the regular season"
+    },
+    {
+      "q": "Brad and Lucas head to head",
+      "expect": "answer",
+      "contains": "Brad Harnum is"
+    },
+    {
+      "q": "Mike vs Stuart all time",
+      "expect": "answer",
+      "contains": "Mike Gostlin is"
+    },
+    {
+      "q": "Josh Dass vs Gurminder",
+      "expect": "answer",
+      "contains": "Josh Dass is"
+    },
+    {
+      "q": "how many points has Brad scored against Jerome",
+      "expect": "answer",
+      "contains": "total points"
+    },
+    {
+      "q": "Jerome's record in the playoffs",
+      "expect": "answer",
+      "contains": "Jerome Prasad has made the playoffs"
+    },
+    {
+      "q": "how has Brad done in the playoffs",
+      "expect": "answer",
+      "contains": "Brad Harnum"
+    },
+    {
+      "q": "Mac in the finals",
+      "expect": "answer",
+      "contains": "finals"
+    },
+    {
+      "q": "Ben playoff history",
+      "expect": "answer",
+      "contains": "Ben Matsumoto"
+    }
+  ],
+  "collision_guards": [
+    {
+      "q": "how many teams make the playoffs",
+      "expect": "answer",
+      "contains": "teams make the playoffs"
+    },
+    {
+      "q": "when is the trade deadline",
+      "expect": "answer",
+      "contains": "Trade deadline"
+    },
+    {
+      "q": "most points in a single season",
+      "expect": "answer",
+      "contains": "Mac James (2024)"
+    },
+    {
+      "q": "most points in a regular season",
+      "expect": "answer",
+      "contains": "in a single season"
+    },
+    {
+      "q": "starting lineup requirements",
+      "expect": "answer",
+      "contains": "Starting Lineup",
+      "not_contains": "Line:"
+    },
+    {
+      "q": "what are the keeper rules",
+      "expect": "answer",
+      "contains": "Draft Round Cost"
+    },
+    {
+      "q": "who has the most wins",
+      "expect": "answer",
+      "contains": "Most career wins"
+    },
+    {
+      "q": "who has the most points all time",
+      "expect": "answer",
+      "contains": "Most career points"
+    },
+    {
+      "q": "who has the most championships",
+      "expect": "answer",
+      "contains": "Championships"
+    },
+    {
+      "q": "how many points is a passing touchdown worth",
+      "expect": "answer",
+      "contains": "passing touchdown"
+    },
+    {
+      "q": "who's favoured this week",
+      "expect": "answer",
+      "contains": "lines"
+    }
+  ],
+  "must_not_answer": [
+    {
+      "q": "what's the weather in Toronto",
+      "expect": "null"
+    },
+    {
+      "q": "who will win the Super Bowl",
+      "expect": "null"
+    },
+    {
+      "q": "who won the trade",
+      "expect": "null",
+      "suggest": true
+    },
+    {
+      "q": "what is Jerome's favourite colour",
+      "expect": "null"
+    },
+    {
+      "q": "is Brad a good person",
+      "expect": "null"
+    },
+    {
+      "q": "tell me a joke",
+      "expect": "null"
+    },
+    {
+      "q": "how many points will Jerome score next week",
+      "expect": "null"
+    },
+    {
+      "q": "who should I start this week",
+      "expect": "null"
+    },
+    {
+      "q": "what is the capital of France",
+      "expect": "null"
+    },
+    {
+      "q": "asdfghjkl",
+      "expect": "null"
+    },
+    {
+      "q": "2019",
+      "expect": "null",
+      "suggest": true
+    },
+    {
+      "q": "Jerome",
+      "expect": "null",
+      "suggest": true
+    },
+    {
+      "q": "Josh Allen",
+      "expect": "null",
+      "suggest": true
+    },
+    {
+      "q": "who had the most points against in week 3 of 2019 in a single game during a tie",
+      "expect": "null"
+    },
+    {
+      "q": "how many points did Josh Allen score against Jerome",
+      "expect": "null"
+    },
+    {
+      "q": "what's Brad's phone number",
+      "expect": "null"
+    },
+    {
+      "q": "who is the commissioner's favourite",
+      "expect": "null"
+    },
+    {
+      "q": "most points scored by a kicker in a game",
+      "expect": "null"
+    },
+    {
+      "q": "who had the most bench points",
+      "expect": "null",
+      "suggest": true
+    },
+    {
+      "q": "how many trades has Jerome made",
+      "expect": "null"
+    },
+    {
+      "q": "who has the most waiver pickups",
+      "expect": "null"
+    },
+    {
+      "q": "highest scoring player in week 4",
+      "expect": "null"
+    },
+    {
+      "q": "who won the toilet bowl in 2015 by more than 50",
+      "expect": "null"
+    },
+    {
+      "q": "which manager drinks the most",
+      "expect": "null"
+    },
+    {
+      "q": "how much does it cost to join",
+      "expect": "null"
+    },
+    {
+      "q": "Jerome's points against in week 3",
+      "expect": "null"
+    },
+    {
+      "q": "best kicker game ever",
+      "expect": "null"
+    }
+  ],
+  "holdout_round_1": [
+    {
+      "q": "has Jerome ever won a title",
+      "expect": "answer",
+      "contains": "1 championship (2016)"
+    },
+    {
+      "q": "has Jerome ever won a playoff game",
+      "expect": "null"
+    },
+    {
+      "q": "has Ian ever won the championship",
+      "expect": "answer",
+      "contains": "hasn't won"
+    },
+    {
+      "q": "how long since Mac won",
+      "expect": "answer",
+      "contains": "last won in 2012"
+    },
+    {
+      "q": "what's Brad's best ever week",
+      "expect": "answer",
+      "contains": "Brad Harnum's highest score"
+    },
+    {
+      "q": "Gurminder's lowest score",
+      "expect": "answer",
+      "contains": "Gurminder Kambo's lowest score"
+    },
+    {
+      "q": "who scored the fewest points in a week in 2023",
+      "expect": "answer",
+      "contains": "56.34"
+    },
+    {
+      "q": "what was the biggest blowout in 2022",
+      "expect": "answer",
+      "contains": "Ben Matsumoto beat Josh Dass"
+    },
+    {
+      "q": "Romie's biggest loss",
+      "expect": "answer",
+      "contains": "Romie Jassal's worst loss"
+    },
+    {
+      "q": "biggest margin of victory",
+      "expect": "answer",
+      "contains": "Biggest blowout"
+    },
+    {
+      "q": "most points against in a season",
+      "expect": "answer",
+      "contains": "in a single season",
+      "not_contains": "career"
+    },
+    {
+      "q": "who has given up the most points",
+      "expect": "answer",
+      "contains": "points against",
+      "not_contains": "Most career points"
+    },
+    {
+      "q": "average points per game in 2024",
+      "expect": "answer",
+      "contains": "League average in 2024"
+    },
+    {
+      "q": "who has the best ppg this season",
+      "expect": "answer",
+      "contains": "in 2026"
+    },
+    {
+      "q": "is anyone on a winning streak",
+      "expect": "answer",
+      "contains": "current winning streak",
+      "not_contains": "2021"
+    },
+    {
+      "q": "Lucas's losing streak",
+      "expect": "answer",
+      "contains": "Lucas Blair's longest losing streak"
+    },
+    {
+      "q": "what happened week 4 2023",
+      "expect": "answer",
+      "contains": "2023 Week 4"
+    },
+    {
+      "q": "show me the champions",
+      "expect": "answer",
+      "contains": "League champions"
+    },
+    {
+      "q": "who are the past champions",
+      "expect": "answer",
+      "contains": "League champions"
+    },
+    {
+      "q": "what was Brad's team called in 2014",
+      "expect": "answer",
+      "contains": "Harnums Avengers",
+      "not_contains": "roster"
+    },
+    {
+      "q": "who was Fiji",
+      "expect": "answer",
+      "contains": "Josh Dass"
+    },
+    {
+      "q": "Jerome vs Mac playoffs",
+      "expect": "answer",
+      "contains": "in the playoffs"
+    },
+    {
+      "q": "who's better Jerome or Romie",
+      "expect": "answer",
+      "contains": "You can decide"
+    },
+    {
+      "q": "who scored the most points in week 5",
+      "expect": "answer",
+      "contains": "2026 Week 5"
+    },
+    {
+      "q": "highest score in week 3 2019",
+      "expect": "answer",
+      "contains": "2019 Week 3"
+    },
+    {
+      "q": "closest playoff game",
+      "expect": "answer",
+      "contains": "(playoffs)",
+      "not_contains": "Next: Ian Singh beat Jerome"
+    },
+    {
+      "q": "biggest playoff blowout",
+      "expect": "answer",
+      "contains": "(playoffs)",
+      "not_contains": "2026 Week 5"
+    },
+    {
+      "q": "Ja'Marr Chase points in week 3",
+      "expect": "null"
+    },
+    {
+      "q": "what's Josh Allen's best game",
+      "expect": "null"
+    },
+    {
+      "q": "who has had the most bench points this year",
+      "expect": "null"
+    },
+    {
+      "q": "who is the worst manager",
+      "expect": "null"
+    },
+    {
+      "q": "best kicker week",
+      "expect": "null"
+    }
+  ],
+  "holdout_round_2": [
+    {
+      "q": "who has scored the most points this season",
+      "expect": "answer",
+      "contains": "in 2026",
+      "not_contains": "career"
+    },
+    {
+      "q": "who has the fewest points this year",
+      "expect": "answer",
+      "contains": "Fewest points in 2026"
+    },
+    {
+      "q": "who finished last in 2022",
+      "expect": "answer",
+      "contains": "Josh Dass"
+    },
+    {
+      "q": "who came second in 2021",
+      "expect": "answer",
+      "contains": "Gurminder Kambo"
+    },
+    {
+      "q": "who was the 2024 runner up",
+      "expect": "answer",
+      "contains": "Ben Matsumoto"
+    },
+    {
+      "q": "who won the most games in 2020",
+      "expect": "answer",
+      "contains": "Mike Gostlin",
+      "not_contains": "championship"
+    },
+    {
+      "q": "how many times has Jerome beaten Brad",
+      "expect": "answer",
+      "contains": "against Brad Harnum"
+    },
+    {
+      "q": "did Jerome beat Ben in week 5",
+      "expect": "answer",
+      "contains": "didn't play Ben Matsumoto"
+    },
+    {
+      "q": "what did Gurminder score in week 2",
+      "expect": "answer",
+      "contains": "Gurminder Kambo"
+    },
+    {
+      "q": "who has the most points against this season",
+      "expect": "answer",
+      "contains": "in 2026"
+    },
+    {
+      "q": "who has the longest playoff drought",
+      "expect": "null"
+    },
+    {
+      "q": "who finished 3rd in 2019",
+      "expect": "answer",
+      "contains": "finished 3rd in 2019"
+    },
+    {
+      "q": "who came last in 2026",
+      "expect": "answer",
+      "contains": "still in progress"
+    },
+    {
+      "q": "who won the most recent championship",
+      "expect": "answer",
+      "contains": "won the {LATEST_FINISHED_SEASON} championship"
     }
   ]
 }

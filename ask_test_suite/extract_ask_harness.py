@@ -52,7 +52,8 @@ REQUIRED_FUNCTIONS = [
     'scorePowerRankingRows', 'computePowerRankings', 'computeCareerPowerRankings',
     'computeValueKeepers', 'levenshtein', 'findManagersInText', 'findYearInText',
     'findPlayerInText', 'findRelativeSeason', 'h2hRecord', 'winnerOf', 'marginOf', 'formatDateTime',
-    'computeKeeperLockDate', 'allTimeRows', 'bestLineup', 'savedLinesRecord', 'askAnswer',
+    'computeKeeperLockDate', 'allTimeRows', 'bestLineup', 'savedLinesRecord',
+    'questionModifiers', 'maskText', 'managerGames', 'gameLine', 'askSuggestions', 'askAnswer',
 ]
 
 REQUIRED_CONST_RANGES = [

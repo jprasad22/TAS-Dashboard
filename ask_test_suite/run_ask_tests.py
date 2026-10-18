@@ -10,6 +10,13 @@ Usage:
     python3 run_ask_tests.py <dashboard.html> <raw.json> <games.json> [query_suite.json]
 
 Exit code 0 if everything passes, 1 if anything fails (so this can gate a delivery).
+
+Failures are reported in three classes, because they are not equally bad:
+    WRONG   answered when it should have stayed silent, or the answer failed contains/not_contains.
+            A confident wrong answer -- the serious kind; the whole design is to avoid these.
+    MISSED  no answer where one was expected (or a miss marked "suggest" came with no suggestion).
+            Annoying, but honest: the person gets "Did you mean...?" instead of a wrong fact.
+    ERROR   askAnswer threw.
 """
 
 import sys
@@ -78,7 +85,11 @@ const __results = __cases.map(c => {{
     error = e.message;
     answer = null;
   }}
-  return {{ ...c, answer, error }};
+  let suggestions = null;
+  if (c.suggest && answer === null && !error) {{
+    try {{ suggestions = askSuggestions(c.q); }} catch (e) {{ error = 'askSuggestions: ' + e.message; }}
+  }}
+  return {{ ...c, answer, error, suggestions }};
 }});
 console.log(JSON.stringify(__results));
 """
@@ -127,13 +138,20 @@ console.log(JSON.stringify(__results));
         got_answer = r['answer'] is not None and r['error'] is None
         expect_answer = r['expect'] == 'answer'
 
-        ok = (got_answer == expect_answer)
-        if ok and r.get('contains') and r['answer']:
-            ok = r['contains'] in r['answer']
-        if ok and r.get('not_contains') and r['answer']:
-            ok = r['not_contains'] not in r['answer']
         if r['error']:
-            ok = False
+            r['kind'] = 'ERROR'
+        elif got_answer and not expect_answer:
+            r['kind'] = 'WRONG'
+        elif not got_answer and expect_answer:
+            r['kind'] = 'MISSED'
+        elif got_answer and ((r.get('contains') and r['contains'] not in r['answer'])
+                             or (r.get('not_contains') and r['not_contains'] in r['answer'])):
+            r['kind'] = 'WRONG'
+        elif r.get('suggest') and not r.get('suggestions'):
+            r['kind'] = 'MISSED'
+        else:
+            r['kind'] = None
+        ok = r['kind'] is None
 
         if ok:
             by_category[cat]["pass"] += 1
@@ -155,15 +173,22 @@ console.log(JSON.stringify(__results));
     print("-" * 70)
     print(f"{'TOTAL':<45} {total_pass:>6} {total_fail:>6}  ({total} queries)")
     print("=" * 70)
+    kinds = {k: sum(1 for f in failures if f['kind'] == k) for k in ('WRONG', 'MISSED', 'ERROR')}
+    answered = [r for r in results if r['answer'] is not None and r['error'] is None]
+    right = [r for r in answered if r['kind'] is None]
+    print(f"WRONG {kinds['WRONG']}   MISSED {kinds['MISSED']}   ERROR {kinds['ERROR']}   "
+          f"-- {len(right)} of {len(answered)} answers given were right"
+          + (f" ({100 * len(right) / len(answered):.1f}%)" if answered else ""))
 
     if failures:
         print(f"\n{len(failures)} FAILURE(S) -- details:\n")
         for f in failures:
-            print(f"  [{f['category']}] {f['q']!r}")
+            print(f"  {f['kind']:<6} [{f['category']}] {f['q']!r}")
             print(f"    expected: {f['expect']}"
                   + (f" containing {f['contains']!r}" if f.get('contains') else "")
                   + (f" NOT containing {f['not_contains']!r}" if f.get('not_contains') else ""))
-            print(f"    got: {f['answer']!r}" + (f"  ERROR: {f['error']}" if f['error'] else ""))
+            print(f"    got: {f['answer']!r}" + (f"  ERROR: {f['error']}" if f['error'] else "")
+                  + (f"  suggestions: {f['suggestions']!r}" if f.get('suggest') else ""))
             print()
         sys.exit(1)
     else:
