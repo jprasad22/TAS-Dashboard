@@ -985,7 +985,7 @@
 
     <div id="playoffBracket"></div>
 
-    <footer>Playoff bracket data covers 2012–2025. Consolation-bracket structure changed in 2025 (an extra round moved earlier) — the labels below reflect that season's actual game groupings, not a fixed template.</footer>
+    <footer><span id="playoffRangeLabel">Playoff bracket data covers 2012–2025</span>. Consolation-bracket structure changed in 2025 (an extra round moved earlier) — the labels below reflect that season's actual game groupings, not a fixed template.</footer>
   </div>
 
   </div>
@@ -1019,7 +1019,7 @@
       </button>
       <div class="accordion-body">
         <div class="accordion-body-inner">
-          <div id="inSeasonStatus" class="trade-status">Checking for live 2026 matchup data...</div>
+          <div id="inSeasonStatus" class="trade-status">Checking for this season's live matchup data...</div>
 
           <div class="table-card" id="inSeasonStandingsWrap" style="overflow-x:auto;display:none;margin-bottom:16px;">
             <div class="table-head">
@@ -2533,6 +2533,7 @@ renderPowerRankings();
 // games, not a fixed template -- 2025's consolation bracket started a round earlier than before.
 function buildPlayoffSeasonSelect() {
   const seasons = [...new Set(GAMES.filter(g => g.type === 'playoff').map(g => g.season))].sort((a, b) => b - a);
+  document.getElementById('playoffRangeLabel').textContent = `Playoff bracket data covers ${seasons[seasons.length - 1]}–${seasons[0]}`;
   const sel = document.getElementById('playoffSeason');
   sel.innerHTML = seasons.map(s => `<option value="${s}">${s}</option>`).join('');
   sel.value = seasons[0];
@@ -3487,6 +3488,9 @@ function savedLinesRecord(saved, season) {
   return { right, wrong, weeks: weeks.sort((a, b) => a - b) };
 }
 
+// What the scoreboard is currently showing, kept for Ask (null until the lines have loaded).
+let CURRENT_LINES = null, SAVED_LINES = null;
+
 async function renderMatchupLines(week, pairs, managerByRoster) {
   const saved = await loadSavedLines();
   const season = String(CURRENT_SEASON.year);
@@ -3497,6 +3501,8 @@ async function renderMatchupLines(week, pairs, managerByRoster) {
   const pairKeys = pairs.map(([a, b]) => key(managerByRoster[a.roster_id], managerByRoster[b.roster_id]));
   const useSaved = snap && pairKeys.every(k => savedByPair[k]);
   const lines = useSaved ? pairKeys.map(k => savedByPair[k]) : await computeMatchupLines(week, pairs, managerByRoster);
+  CURRENT_LINES = { week, lines, locked: !!useSaved, takenAt: useSaved ? snap.takenAt : null };
+  SAVED_LINES = saved;
 
   pairs.forEach(([a], i) => {
     const el = document.querySelector(`.matchup-line[data-pair="${i}"]`);
@@ -4171,6 +4177,92 @@ function askAnswer(raw) {
     if (RAW.some(d => d.season === yr)) return `The ${yr} season is still in progress -- no Sacko has been decided yet.`;
   }
 
+  // ---- Playoff history. The playoff field is the regular-season top 8 (PLAYOFF_TEAMS): verified for
+  // every season 2012-2025 against the actual first-round bracket. Finished seasons only.
+  const PLAYOFF_TEAMS = 8;
+  const playoffSeasonsOf = m => [...getFinishedSeasons()].filter(s => (valueFor(m, s, 'Regular Season Standings') || 99) <= PLAYOFF_TEAMS).sort((a, b) => a - b);
+  if (mgrs.length === 1 && /((made|make|making|reached|been to|missed) (the )?playoffs|playoff (appearance|berth|record|history))/.test(lower)) {
+    const m = mgrs[0];
+    const seasons = playoffSeasonsOf(m), all = [...getFinishedSeasons()].filter(s => valueFor(m, s, 'Playoff Standings') !== null);
+    const titles = all.filter(s => valueFor(m, s, 'Playoff Standings') === 1);
+    const finals = all.filter(s => valueFor(m, s, 'Playoff Standings') <= 2);
+    const wins = all.reduce((n, s) => n + (valueFor(m, s, 'Playoff Wins') || 0), 0);
+    return `${m} has made the playoffs ${seasons.length} times in ${all.length} seasons (${seasons.join(', ') || 'never'}): ` +
+      `${wins} playoff win${wins === 1 ? '' : 's'}, ${finals.length} final${finals.length === 1 ? '' : 's'}, ${titles.length} championship${titles.length === 1 ? '' : 's'}${titles.length ? ` (${titles.join(', ')})` : ''}.`;
+  }
+  if (!mgrs.length && yr && /((made|make|in) the playoffs|playoff (teams|field|seeds))/.test(lower)) {
+    if (!getFinishedSeasons().has(yr)) return RAW.some(d => d.season === yr) ? `The ${yr} season is still in progress -- the playoff field isn't set yet. The live standings are on the Current Season tab.` : null;
+    const field = managers.map(m => ({ m, seed: valueFor(m, yr, 'Regular Season Standings') })).filter(r => r.seed && r.seed <= PLAYOFF_TEAMS).sort((a, b) => a.seed - b.seed);
+    return `${yr} playoff field (by seed): ` + field.map(r => `${r.seed}. ${r.m}`).join(', ') + '.';
+  }
+  if (!mgrs.length && !yr && /(most|fewest|least) (playoff appearances|times (in|making|made) the playoffs)/.test(lower)) {
+    const least = /fewest|least/.test(lower);
+    const counts = managers.map(m => ({ m, n: playoffSeasonsOf(m).length })).sort((a, b) => least ? a.n - b.n : b.n - a.n);
+    const top = counts.filter(c => c.n === counts[0].n).map(c => c.m);
+    return `${least ? 'Fewest' : 'Most'} playoff appearances: ${top.join(' & ')}, ${counts[0].n} of ${getFinishedSeasons().size} seasons.`;
+  }
+
+  // ---- All-Time Team data (best fantasy seasons, league scoring; see the All-Time Team tab).
+  const POS_WORDS = [['QB', /\b(qbs?|quarterbacks?)\b/], ['RB', /\b(rbs?|running ?backs?)\b/], ['WR', /\b(wrs?|wide ?receivers?|receivers?)\b/],
+    ['TE', /\b(tes|te|tight ?ends?)\b/], ['K', /\b(kickers?)\b/], ['DEF', /\b(defen[cs]es?|dst|d\/st)\b/]];
+  const posAsked = (POS_WORDS.find(([, re]) => re.test(lower)) || [])[0];
+  const draftedBy = r => r.owner ? `drafted by ${r.owner}, R${r.round}` : 'undrafted';
+  const fmtRow = (r, withPos) => `${r.player} (${withPos ? r.pos + ', ' : ''}${r.nflTeam}${yr ? '' : `, ${r.season}`}), ${fmt(r.pts, 1)} pts -- ${draftedBy(r)}`;
+  if (!mgrs.length && /\bbest\b|\btop\b|\bmost points\b/.test(lower) && posAsked && !/keeper|power|record|value/.test(lower)) {
+    if (yr && !ALL_TIME_TEAM_DATA[yr]) return `The All-Time Team covers finished seasons (${Object.keys(ALL_TIME_TEAM_DATA)[0]}–${Object.keys(ALL_TIME_TEAM_DATA).slice(-1)[0]}); ${yr} isn't in it yet.`;
+    const rows = allTimeRows(yr ? String(yr) : 'all').filter(r => r.pos === posAsked).sort((a, b) => b.pts - a.pts).slice(0, 3);
+    return `Best ${posAsked} season${yr ? ` of ${yr}` : ' ever'} (league scoring): ${fmtRow(rows[0])}. Next: ${rows.slice(1).map(fmtRow).join('; ')}.`;
+  }
+  if (!mgrs.length && /(all.?time team|greatest team|best (fantasy )?(team|lineup)( of all time| ever)?|all.?time lineup)/.test(lower) && !/power|record/.test(lower)) {
+    if (yr && !ALL_TIME_TEAM_DATA[yr]) return `The All-Time Team covers finished seasons only; ${yr} isn't in it yet.`;
+    const lineup = bestLineup(allTimeRows(yr ? String(yr) : 'all'), !yr).filter(l => l.row);
+    return { html: `${yr ? `Best possible lineup of ${yr}` : 'All-Time Greatest Team'} (league scoring):<br>` +
+      lineup.map(({ slot, row }) => `${slot}: ${fmtRow(row)}`).join('<br>') };
+  }
+  if (!mgrs.length && /(best (fantasy |single |individual )?(season|player)s?( ever| of all time)?|most fantasy points in a season)/.test(lower) && !/power|record|wins|points for|manager/.test(lower)) {
+    if (yr && !ALL_TIME_TEAM_DATA[yr]) return `The All-Time Team covers finished seasons only; ${yr} isn't in it yet.`;
+    const rows = allTimeRows(yr ? String(yr) : 'all').sort((a, b) => b.pts - a.pts).slice(0, 3);
+    return `Best individual fantasy season${yr ? ` of ${yr}` : ' on record'} (league scoring): ${rows.map((r, i) => `${i + 1}. ${fmtRow(r, true)}`).join('; ')}.`;
+  }
+
+  // ---- A manager's best / worst season, by Power Score (finished seasons only).
+  if (mgrs.length === 1 && /(best|worst) (season|year)/.test(lower)) {
+    const worst = /worst/.test(lower);
+    const scored = [...getFinishedSeasons()].map(s => ({ s, row: computePowerRankings(s).find(r => r.manager === mgrs[0]) })).filter(x => x.row)
+      .sort((a, b) => worst ? a.row.score - b.row.score : b.row.score - a.row.score);
+    if (scored.length) {
+      const { s, row } = scored[0];
+      const place = valueFor(mgrs[0], s, 'Playoff Standings');
+      return `${mgrs[0]}'s ${worst ? 'worst' : 'best'} season by Power Score: ${s} -- ${recordStr(row.wins, row.losses, row.ties)}, ${fmt(row.ptsFor, 1)} points for, ` +
+        `Power Score ${row.score.toFixed(1)}, finished ${place === 1 ? '1st (champion)' : place === 12 ? '12th (Sacko)' : `#${place}`}.`;
+    }
+  }
+
+  // ---- Matchup lines (what the scoreboard is showing this week).
+  if (/\b(betting )?lines?\b|\bspreads?\b|\bfavou?r(ed|ite|ites)\b|\bodds\b/.test(lower) && !/lineup|line.up/.test(lower)) {
+    if (/(record|how (have|did|are)|track record|accura)/.test(lower)) {
+      const season = String(CURRENT_SEASON.year);
+      const rec = typeof SAVED_LINES !== 'undefined' && SAVED_LINES ? savedLinesRecord(SAVED_LINES, season) : null;
+      return rec && rec.weeks.length
+        ? `Lines saved before kickoff this season: favourites ${rec.right}–${rec.wrong} (Week${rec.weeks.length > 1 ? 's' : ''} ${rec.weeks.join(', ')}). In the 2025 backtest the model picked about 6 winners in 10.`
+        : `No saved pre-kickoff lines have a result yet this season. In the 2025 backtest the model picked about 6 winners in 10.`;
+    }
+    const cur = typeof CURRENT_LINES !== 'undefined' ? CURRENT_LINES : null;
+    if (!cur) return `This week's lines are on the live scoreboard (Current Season tab) -- they appear once it has loaded.`;
+    const text = l => `${l.mA} vs ${l.mB}: ${l.favourite ? `${l.favourite} −${l.spread}` : 'pick’em'} (win ${l.winA}% / ${l.winB}%, O/U ${l.total})`;
+    const tag = cur.locked ? ' (locked before kickoff)' : '';
+    if (mgrs.length) {
+      const l = cur.lines.find(x => mgrs.includes(x.mA) || mgrs.includes(x.mB));
+      if (l) return `Week ${cur.week} line${tag}: ${text(l)}.`;
+    }
+    return `Week ${cur.week} lines${tag}: ` + cur.lines.map(text).join('; ') + '.';
+  }
+
+  // ---- Where things live
+  if (/\b(weekly )?recaps?\b|\btelegraph\b/.test(lower) && !mgrs.length) {
+    return `The Tobermory Telegraph lives in the Weekly Recap tab -- the newest week shows first, and the season and week selectors go back to the Draft Recap.`;
+  }
+
   // Career-stat lookup, reusing TICKER_STATS so answers always match the ticker. Requires !yr so it
   // never competes with single-year branches, and uses multi-word/distinctive aliases (not bare
   // "wins"/"points") so it doesn't collide with the league-leader branches further down.
@@ -4203,7 +4295,11 @@ function askAnswer(raw) {
     } else if (!mgrs.length) {
       const row = wantsLeast ? descRows[descRows.length - 1] : descRows[0];
       const label = wantsLeast ? `${careerStatKey === 'winpct' ? 'Lowest' : 'Fewest'} career ${TICKER_STATS[careerStatKey].label}` : `Career ${TICKER_STATS[careerStatKey].label} leader`;
-      return `${label}: ${row.manager} — ${plain(row)}.`;
+      // Name everyone level with the leader (e.g. playoff wins: Jerome and Mac both 14), not just the first.
+      const tied = descRows.filter(r => r.sortVal === row.sortVal);
+      return tied.length > 1
+        ? `${label}: ${tied.map(r => r.manager).join(' & ')} (tied) — ${plain(row)} each.`
+        : `${label}: ${row.manager} — ${plain(row)}.`;
     }
   }
 
