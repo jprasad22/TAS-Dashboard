@@ -389,6 +389,7 @@
   }
   .ask-a { font-size: 14px; line-height: 1.6; color: var(--ink); }
   .ask-a.miss { color: var(--chalk-dim); font-style: italic; }
+  .ask-suggest-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .ask-input-row { display:flex; gap: 10px; }
   .ask-input-row input {
     flex: 1; background: var(--slate); color: var(--ink);
@@ -1238,7 +1239,7 @@
       <table class="centered-table" id="allTimeManagersTable"></table>
     </div>
 
-    <footer>Stats and NFL teams from Sleeper (a mid-season trade shows as e.g. CAR → SF) · lineup uses the current league format (QB, 2 RB, 2 WR, TE, 2 FLEX, K, DEF) for every year · the all-time team uses each player once, at his best season · before 2025, 60+ yard field goals count as 50–59 yarders (older stats don't split them)</footer>
+    <footer>Stats and NFL teams from Sleeper (a mid-season trade shows as e.g. CAR → SF) · lineup uses the current league format (QB, 2 RB, 2 WR, TE, 2 FLEX, K, DEF) for every year · the all-time team uses each player once, at that player's best season · before 2025, 60+ yard field goals count as 50–59 yarders (older stats don't split them)</footer>
   </div>
 
   <div id="rosters2025Tab" class="tab-panel" style="display:none;">
@@ -3161,7 +3162,7 @@ function allTimeRows(season) {
 }
 
 // Fill the lineup slots in order with the highest-scoring eligible rows; FLEX takes the best RB/WR/TE
-// left after the fixed slots. onePerPlayer: the all-time team uses each player once (his best season).
+// left after the fixed slots. onePerPlayer: the all-time team uses each player once (that player's best season).
 function bestLineup(rows, onePerPlayer) {
   const used = new Set();
   const key = r => onePerPlayer ? r.pos + '|' + r.player : r.season + '|' + r.pos + '|' + r.player;
@@ -4111,20 +4112,343 @@ function findRelativeSeason(lower) {
   return null;
 }
 
+// ---------- Ask: question understanding ----------
+// Words that change WHAT is being asked. Every answer must either honour them or not fire -- before
+// this, "points against" got the points-FOR leader, "Ben's biggest win" got a league-wide blowout,
+// "who has never won a title" got the title leaders, and so on.
+function questionModifiers(lower) {
+  const wk = lower.match(/\b(?:week|wk)\s*(\d{1,2})\b/);
+  return {
+    against: /\b(points?|pts) (scored )?against\b|\bpoints allowed\b|\bpoints (have been|were|got) scored against\b|\b(given up|gave up|conceded|allowed) the (most|fewest|least) points\b|\bpoints (given up|conceded)\b/.test(lower),
+    single: /\b(single|one|a|any|individual) (game|week|matchup)\b|\bin a (game|week|matchup)\b|\bweekly (high|low)\b/.test(lower),
+    scoreRecord: /\b(highest|lowest|best|worst|top|record) (ever |all.time )?(single.|playoff |regular.season )?(score|game|week|weekly score|scoring (game|week|performance))\b/.test(lower) ||
+      /\b(most|fewest|least) points in (week|wk) ?\d/.test(lower),
+    average: /\baverages?\b|\bper (game|week)\b|\bppg\b/.test(lower) && !/power/.test(lower),
+    // Data Ask doesn't have: individual players' weekly scores, bench points, transaction counts,
+    // predictions, the Toilet Bowl. A team-score answer to these would be confidently wrong.
+    noData: /\b(kickers?|quarterbacks?|qbs?|running backs?|rbs?|receivers?|wrs?|tight ends?|tes|defen[cs]es?|dst|players?)\b/.test(lower) &&
+        /\b(game|games|week|weekly|matchup)\b|\bwk\s*\d/.test(lower) ||
+      /\bbench points\b|\b(most|fewest|how many) (waiver|faab|free.agent)? ?(pickups|claims|moves|trades|transactions)\b|\bhow many trades\b|\bwill\b.*\b(score|win)\b|\bnext week\b|\btoilet bowl\b.*\b(won|win|winner|lost|loser)\b|\b(won|win|winner|lost|loser)\b.*\btoilet bowl\b/.test(lower),
+    never: /\bnever\b|\b(has|have)n'?t (ever )?won\b|\bwithout (a |any )?(title|championship)\b/.test(lower),
+    drought: /\bdrought\b|\blongest (time )?without\b/.test(lower),
+    losing: /\blos(ing|s) streak\b|\blosses in a row\b|\bstraight losses\b|\bskid\b/.test(lower),
+    streak: /\bstreaks?\b|\bin a row\b|\bstraight (wins|losses)\b|\bskid\b/.test(lower),
+    playoffs: /\bplayoffs?\b|\bpost.?season\b/.test(lower),
+    regular: /\bregular.season\b/.test(lower),
+    week: wk ? Number(wk[1]) : null,
+  };
+}
+
+// Removes a phrase (e.g. a player's name) from a question, so "Josh Allen" doesn't read as Josh Dass.
+function maskText(text, phrase) {
+  const i = text.toLowerCase().indexOf(phrase.toLowerCase());
+  return i < 0 ? text : text.slice(0, i) + ' ' + text.slice(i + phrase.length);
+}
+
+// One row per manager per game, from that manager's side: { season, week, type, m, opp, pf, pa, won, lost, tied }.
+function managerGames(filter) {
+  const rows = [];
+  GAMES.forEach(g => {
+    [[g.mA, g.mB, g.sA, g.sB], [g.mB, g.mA, g.sB, g.sA]].forEach(([m, opp, pf, pa]) => {
+      const r = { season: g.season, week: g.week, type: g.type, m, opp, pf, pa, won: pf > pa, lost: pf < pa, tied: pf === pa };
+      if (!filter || filter(r)) rows.push(r);
+    });
+  });
+  return rows;
+}
+
+function gameLine(r) {
+  const result = r.won ? 'beat' : r.lost ? 'lost to' : 'tied';
+  return `${r.m} ${result} ${r.opp} ${fmt(r.pf, 2)}–${fmt(r.pa, 2)} (${r.season} Week ${r.week}${r.type === 'playoff' ? ', playoffs' : ''})`;
+}
+
+// When Ask can't answer, up to 3 questions it CAN answer, built from what it recognised in the
+// question. Every suggestion is run through askAnswer() first, so none of them is a dead end.
+function askSuggestions(raw) {
+  const text = raw.trim();
+  const lower = text.toLowerCase();
+  const player = findPlayerInText(text);
+  const mgrs = findManagersInText(player ? maskText(text, player) : text);
+  const yr = findYearInText(text) || findRelativeSeason(lower);
+  const first = m => m.split(' ')[0];
+  const done = Math.min(yr || latestFinishedSeason(), latestFinishedSeason());
+  const out = [];
+  if (player) out.push(`Who drafted ${player}?`, `Who has ${player}?`, `Was ${player} ever kept?`);
+  if (mgrs.length >= 2) out.push(`${first(mgrs[0])} vs ${first(mgrs[1])}`, `${first(mgrs[0])} vs ${first(mgrs[1])} in the playoffs`);
+  if (mgrs.length === 1) {
+    const m = first(mgrs[0]);
+    out.push(yr ? `${m}'s record in ${yr}` : `${m}'s best season`, `${m}'s highest score ever`, `How many times has ${m} made the playoffs?`, `${m}'s career win percentage`);
+  }
+  if (yr) out.push(`Who won the ${done} championship?`, `Who made the playoffs in ${done}?`, `Best QB in ${done}`);
+  out.push('Who is in first place?', 'Highest score ever in a single week', 'All-time team', 'Who has the most championships?');
+  return [...new Set(out)].filter(s => askAnswer(s) !== null).slice(0, 3);
+}
+
 function askAnswer(raw) {
   const text = raw.trim();
   if (!text) return null;
   const lower = text.toLowerCase();
   const yr = findYearInText(text) || findRelativeSeason(lower);
-  const mgrs = findManagersInText(text);
+  // Players first: a player's name can contain a manager's first name ("Josh Allen" vs Josh Dass).
   const player = findPlayerInText(text);
+  const mgrText = (player ? maskText(text, player) : text).toLowerCase();
+  // Keep managers in the order the question names them ("Jerome vs Ben" -> Jerome first).
+  const firstMention = m => { const i = Math.min(...m.toLowerCase().split(' ').map(part => { const k = mgrText.indexOf(part); return k < 0 ? Infinity : k; })); return i; };
+  const mgrs = findManagersInText(player ? maskText(text, player) : text).sort((a, b) => firstMention(a) - firstMention(b));
+  const q = questionModifiers(lower);
+  const finishedSet = getFinishedSeasons();
+  const least = /\b(least|fewest|lowest|worst)\b/.test(lower);
+  const titlesOf = m => RAW.filter(d => d.manager === m && d.category === 'Playoff Standings' && d.value === 1).map(d => d.season).sort((a, b) => a - b);
+  // Players' weekly points aren't stored (only teams'), so "Josh Allen's best game" can't be answered.
+  if (q.noData || (player && (q.week || q.single || q.scoreRecord))) return null;
+
+  // ===== Precise answers: these handle the meaning-changing words above, and run first. =====
+
+  // Single-game records: highest/lowest score, biggest win, worst loss, closest game -- league or one manager.
+  const wantsWin = /\b(biggest|largest|best|most lopsided) (playoff |regular.season )?(win|victory|blowout)\b/.test(lower);
+  const wantsLoss = /\b(worst|biggest|heaviest|largest) (playoff |regular.season )?(loss|defeat|beating)\b/.test(lower);
+  const wantsClose = /\b(closest|narrowest) (playoff |regular.season )?(game|win|loss|matchup)\b/.test(lower);
+  const seasonWord = /\b(season|year)\b/.test(lower.replace(/\b(this|last|current|regular) (season|year)\b/g, ''));
+  // "Week N" with no year means the same season a week lookup would use (this season if played).
+  const weekSeason = n => GAMES.some(g => g.season === CURRENT_SEASON.year && g.week === n) ? CURRENT_SEASON.year : latestFinishedSeason();
+  if (mgrs.length <= 1 && !seasonWord && !q.against && (q.single || q.scoreRecord || ((mgrs.length === 1 || q.playoffs || q.regular) && (wantsWin || wantsLoss || wantsClose)))) {
+    const inSeason = yr || (q.week ? weekSeason(q.week) : null);
+    const rows = managerGames(r => (!mgrs.length || r.m === mgrs[0]) && (!inSeason || r.season === inSeason) && (!q.week || r.week === q.week) &&
+      (q.playoffs ? r.type === 'playoff' : q.regular ? r.type === 'regular' : true));
+    const span = `${q.week ? ` in ${inSeason} Week ${q.week}` : yr ? ` in ${yr}` : ' ever'}${q.playoffs ? ' (playoffs)' : q.regular ? ' (regular season)' : ''}`;
+    if (!rows.length) return `No games on record${mgrs.length ? ' for ' + mgrs[0] : ''}${span}.`;
+    const who = mgrs.length ? `${mgrs[0]}'s` : 'The';
+    if (wantsWin || wantsLoss || wantsClose) {
+      // League-wide, keep one row per game (the winner's side) so a game isn't listed twice.
+      const pool = rows.filter(r => wantsClose ? (mgrs.length ? !r.tied : r.won) : wantsWin ? r.won : r.lost)
+        .sort((a, b) => wantsClose ? Math.abs(a.pf - a.pa) - Math.abs(b.pf - b.pa) : Math.abs(b.pf - b.pa) - Math.abs(a.pf - a.pa)).slice(0, 3);
+      const what = wantsClose ? 'closest game' : wantsWin ? 'biggest win' : 'worst loss';
+      if (!pool.length) return `${mgrs[0] || 'No one'} has no ${wantsWin ? 'wins' : 'losses'} on record${span}.`;
+      return `${who} ${what}${span}: ${gameLine(pool[0])}, a margin of ${fmt(Math.abs(pool[0].pf - pool[0].pa), 2)}.` +
+        (pool.length > 1 ? ` Next: ${pool.slice(1).map(gameLine).join('; ')}.` : '');
+    }
+    const low = least && !/\b(highest|most|best|top)\b/.test(lower);
+    const top = rows.sort((a, b) => low ? a.pf - b.pf : b.pf - a.pf).slice(0, 3);
+    return `${mgrs.length ? `${mgrs[0]}'s ${low ? 'lowest' : 'highest'} score` : `${low ? 'Lowest' : 'Highest'} single-week score`}${span}: ` +
+      `${fmt(top[0].pf, 2)} -- ${gameLine(top[0])}. Next: ${top.slice(1).map(r => `${fmt(r.pf, 2)} (${r.m}, ${r.season} Week ${r.week})`).join('; ')}.`;
+  }
+
+  // Points against (regular season), career or one season.
+  if (q.against && !q.week && mgrs.length <= 1) {
+    const sum = m => RAW.filter(d => d.manager === m && d.category === 'Pts Against' && (!yr || d.season === yr)).reduce((a, b) => a + b.value, 0);
+    const rows = managers.map(m => ({ m, v: sum(m) })).sort((a, b) => b.v - a.v);
+    const label = `points against${yr ? ` in ${yr}` : ' (career, regular season)'}`;
+    if (!yr && !mgrs.length && /\b(in a|single|one) season\b/.test(lower)) {
+      const seasons = RAW.filter(d => d.category === 'Pts Against' && finishedSet.has(d.season)).sort((a, b) => least ? a.value - b.value : b.value - a.value);
+      return `${least ? 'Fewest' : 'Most'} points against in a single season (regular season, finished seasons): ` +
+        seasons.slice(0, 3).map(d => `${d.manager} ${d.season} -- ${fmt(d.value, 1)}`).join('; ') + '.';
+    }
+    if (mgrs.length === 1) {
+      const i = rows.findIndex(r => r.m === mgrs[0]);
+      return `${mgrs[0]}'s ${label}: ${fmt(rows[i].v, 1)} (#${i + 1} most of ${rows.length}).`;
+    }
+    const pick = least ? rows[rows.length - 1] : rows[0];
+    return `${least ? 'Fewest' : 'Most'} ${label}: ${rows.filter(r => r.v === pick.v).map(r => r.m).join(' & ')} -- ${fmt(pick.v, 1)}.`;
+  }
+
+  // Points per game (regular season).
+  if (q.average && !q.week && /\b(points?|pts|score[sd]?|scoring|ppg)\b/.test(lower)) {
+    const avg = m => { const rs = managerGames(r => r.m === m && r.type === 'regular' && (!yr || r.season === yr)); return rs.length ? rs.reduce((a, b) => a + b.pf, 0) / rs.length : null; };
+    const rows = managers.map(m => ({ m, v: avg(m) })).filter(r => r.v !== null).sort((a, b) => b.v - a.v);
+    const label = `points per game${yr ? ` in ${yr}` : ' (career, regular season)'}`;
+    if (mgrs.length === 1) {
+      const i = rows.findIndex(r => r.m === mgrs[0]);
+      if (i >= 0) return `${mgrs[0]} averages ${fmt(rows[i].v, 2)} ${label} (#${i + 1} of ${rows.length}).`;
+    } else if (!mgrs.length && rows.length && !/\b(who|highest|most|best|top|lowest|least|fewest|worst)\b/.test(lower)) {
+      const all = managerGames(r => r.type === 'regular' && (!yr || r.season === yr));
+      return `League average${yr ? ` in ${yr}` : ' (all seasons, regular season)'}: ${fmt(all.reduce((a, b) => a + b.pf, 0) / all.length, 2)} points per team per game. ` +
+        `Highest: ${rows[0].m} (${fmt(rows[0].v, 2)}); lowest: ${rows[rows.length - 1].m} (${fmt(rows[rows.length - 1].v, 2)}).`;
+    } else if (!mgrs.length && rows.length) {
+      const pick = least ? rows[rows.length - 1] : rows[0];
+      return `${least ? 'Lowest' : 'Highest'} ${label}: ${pick.m}, ${fmt(pick.v, 2)}.`;
+    }
+  }
+
+  // Streaks: winning or losing, longest (within a season, as on the Head-to-Head tab) or current.
+  if (q.streak && !q.week && mgrs.length <= 1 && !/power|keeper/.test(lower)) {
+    const losing = q.losing || /\blos(s|ses|ing)\b/.test(lower);
+    const hit = r => losing ? r.lost : r.won;
+    const gamesOf = m => managerGames(r => r.m === m && (!yr || r.season === yr) && (q.playoffs ? r.type === 'playoff' : true))
+      .sort((a, b) => a.season - b.season || a.week - b.week);
+    const currentRun = m => { const gs = gamesOf(m).filter(r => r.season === CURRENT_SEASON.year); let n = 0; for (let i = gs.length - 1; i >= 0 && hit(gs[i]); i--) n++; return { gs, n }; };
+    const now = /\b(current|currently|active|right now|ongoing)\b|\b(is|are) (anyone|anybody|someone|any team) on\b|\bwho('s| is) on a\b/.test(lower);
+    if (!mgrs.length && now) {
+      const runs = managers.map(m => ({ m, ...currentRun(m) })).filter(r => r.gs.length);
+      if (!runs.length) return `No ${CURRENT_SEASON.year} games have been played yet.`;
+      const top = Math.max(...runs.map(r => r.n));
+      if (!top) return `No one is on a ${losing ? 'losing' : 'winning'} streak right now.`;
+      return `Longest current ${losing ? 'losing' : 'winning'} streak (${CURRENT_SEASON.year}, through Week ${Math.max(...runs.map(r => r.gs[r.gs.length - 1].week))}): ` +
+        `${runs.filter(r => r.n === top).map(r => r.m).join(', ')} -- ${top} straight.`;
+    }
+    if (mgrs.length === 1 && now) {
+      const { gs, n } = currentRun(mgrs[0]);
+      return gs.length ? `${mgrs[0]}'s current ${losing ? 'losing' : 'winning'} streak: ${n} game${n === 1 ? '' : 's'} (${CURRENT_SEASON.year}, through Week ${gs[gs.length - 1].week}).`
+        : `${mgrs[0]} hasn't played a ${CURRENT_SEASON.year} game yet.`;
+    }
+    let best = [];
+    (mgrs.length ? mgrs : managers).forEach(m => {
+      let run = 0, start = null, season = null;
+      gamesOf(m).forEach(r => {
+        if (r.season !== season) { run = 0; season = r.season; }
+        if (!hit(r)) { run = 0; return; }
+        if (!run) start = r;
+        run++;
+        if (!best.length || run > best[0].len) best = [{ m, len: run, start, end: r }];
+        else if (run === best[0].len && !best.some(b => b.m === m && b.end.season === r.season)) best.push({ m, len: run, start, end: r });
+      });
+    });
+    if (!best.length) return `${mgrs[0] || 'No one'} has no ${losing ? 'losses' : 'wins'} on record${yr ? ' in ' + yr : ''}.`;
+    return `${mgrs.length ? `${mgrs[0]}'s longest` : 'Longest'} ${losing ? 'losing' : 'winning'} streak${yr ? ` in ${yr}` : ''}: ${best[0].len} straight -- ` +
+      best.slice(0, 3).map(b => `${mgrs.length ? '' : b.m + ' '}(${b.end.season}, Weeks ${b.start.week}–${b.end.week})`).join('; ') + '.';
+  }
+
+  // A specific week's saved pre-kickoff lines (current season only -- saving started in 2026).
+  const linesWord = /\b(betting )?lines?\b|\bspreads?\b|\bodds\b/.test(lower) && !/lineup|line.up/.test(lower);
+  if (q.week && linesWord && (!yr || yr === CURRENT_SEASON.year)) {
+    const snap = typeof SAVED_LINES !== 'undefined' && SAVED_LINES && (SAVED_LINES[String(CURRENT_SEASON.year)] || {})[q.week];
+    if (!snap) return `No line was saved before kickoff for ${CURRENT_SEASON.year} Week ${q.week}${q.week < 6 ? ' (saved lines start in Week 6)' : ''}.`;
+    const pick = mgrs.length ? snap.games.filter(l => mgrs.includes(l.mA) || mgrs.includes(l.mB)) : snap.games;
+    return `${CURRENT_SEASON.year} Week ${q.week} lines, saved before kickoff: ` +
+      pick.map(l => `${l.mA} vs ${l.mB}: ${l.favourite ? `${l.favourite} −${l.spread}` : 'pick’em'} (win ${l.winA}% / ${l.winB}%)`).join('; ') + '.';
+  }
+
+  // A specific week: one manager's game, or the whole week's results.
+  if (q.week && !linesWord && !q.against) {
+    const season = yr || weekSeason(q.week);
+    const games = GAMES.filter(g => g.season === season && g.week === q.week);
+    if (!games.length) return `No ${season} Week ${q.week} games on record${season === CURRENT_SEASON.year ? ' yet' : ''}.`;
+    if (mgrs.length) {
+      const r = managerGames(r => r.season === season && r.week === q.week && r.m === mgrs[0])[0];
+      if (r && mgrs.length >= 2 && r.opp !== mgrs[1]) return `${mgrs[0]} didn't play ${mgrs[1]} in ${season} Week ${q.week}: ${gameLine(r)}.`;
+      return r ? `${gameLine(r)}.` : `${mgrs[0]} had no game in ${season} Week ${q.week}.`;
+    }
+    return `${season} Week ${q.week}${games[0].type === 'playoff' ? ' (playoffs)' : ''}: ` +
+      games.map(g => `${g.mA} ${fmt(g.sA, 2)}–${fmt(g.sB, 2)} ${g.mB}`).join('; ') + '.';
+  }
+
+  // Champions: the full list, managers who've never won, and title droughts.
+  if (!mgrs.length && !yr && /\b((list|all|every|each|past|previous)( of)?( the)? (league )?(champions?|title winners|winners))\b|\ball.time champions\b|\bshow( me)? (the )?champions\b|championship history|who won each (year|season)|champions by (year|season)|\bwho (has|have) won (the|a) (championship|title)\b/.test(lower)) {
+    return { html: 'League champions:<br>' + [...finishedSet].sort((a, b) => a - b)
+      .map(s => `${s}: ${(RAW.find(d => d.season === s && d.category === 'Playoff Standings' && d.value === 1) || {}).manager}`).join('<br>') };
+  }
+  if ((q.never && /\b(won|win|champions?|title|titles|championships?)\b/.test(lower)) ||
+      (mgrs.length === 1 && /\bever (won|win)\b/.test(lower) && /\b(champions?|title|titles|championships?|chip)\b/.test(lower))) {
+    if (mgrs.length === 1) {
+      const t = titlesOf(mgrs[0]);
+      return t.length ? `${mgrs[0]} has won ${t.length} championship${t.length === 1 ? '' : 's'} (${t.join(', ')}).` : `${mgrs[0]} hasn't won a championship yet.`;
+    }
+    const none = managers.filter(m => !titlesOf(m).length);
+    return none.length ? `Never won a championship: ${none.join(', ')}.` : 'Every manager has won at least one championship.';
+  }
+  if ((q.drought && !(/playoff/.test(lower) && !/\b(title|championship|champion)\b/.test(lower))) || (mgrs.length === 1 && /\bhow long since\b.*\bwon\b/.test(lower)) || (mgrs.length === 1 && /\bwhen did\b.*\bwin\b|\blast (won|win)\b/.test(lower) && /\b(title|championship|champion|chip)\b/.test(lower))) {
+    const last = latestFinishedSeason();
+    const rows = managers.map(m => { const t = titlesOf(m); return { m, won: t.length ? t[t.length - 1] : null }; });
+    if (mgrs.length === 1) {
+      const r = rows.find(x => x.m === mgrs[0]);
+      return r.won === null ? `${mgrs[0]} hasn't won a championship yet.` : `${mgrs[0]} last won in ${r.won}${last > r.won ? ` -- ${last - r.won} season${last - r.won === 1 ? '' : 's'} ago` : ' (reigning champion)'}.`;
+    }
+    const never = rows.filter(r => r.won === null).map(r => r.m);
+    const longest = rows.filter(r => r.won !== null).sort((a, b) => a.won - b.won).slice(0, 2);
+    return `Longest title droughts: ${never.length ? `never won -- ${never.join(', ')}; ` : ''}longest since a title -- ` +
+      longest.map(r => `${r.m} (last won ${r.won}, ${last - r.won} seasons ago)`).join(', ') + '.';
+  }
+
+  // A manager's playoff record (all playoff games) alongside their appearances -- handled with the
+  // playoff-history answers further down; finals count added there.
+
+  // Full standings table (current season, or a finished season's final regular-season order).
+  if (!mgrs.length && /\bstandings\b|\bleague table\b/.test(lower) && !/\b(leader|first|top|lead|leading)\b/.test(lower)) {
+    const season = yr || Math.max(...RAW.map(d => d.season));
+    const done = finishedSet.has(season);
+    const rows = managers.map(m => ({ m, w: valueFor(m, season, 'Wins'), l: valueFor(m, season, 'Losses'), t: tiesFor(m, season), pf: valueFor(m, season, 'Pts For'), rank: valueFor(m, season, 'Regular Season Standings') }))
+      .filter(r => r.w !== null)
+      .sort(done ? (a, b) => a.rank - b.rank : (a, b) => winPctOf(b.w, b.l, b.t) - winPctOf(a.w, a.l, a.t) || b.pf - a.pf);
+    if (!rows.length) return null;
+    const week = GAMES.filter(g => g.season === season && g.type === 'regular').reduce((mx, g) => Math.max(mx, g.week), 0);
+    return { html: `${season} ${done ? 'final regular-season standings' : `standings through Week ${week}`}:<br>` +
+      rows.map((r, i) => `${i + 1}. ${r.m} ${recordStr(r.w, r.l, r.t)}, ${fmt(r.pf, 1)} PF`).join('<br>') };
+  }
+
+  // Team name -> manager.
+  if (!mgrs.length && /\bteam\b|\bnamed?\b|\bcalled\b|\bwhose\b|\bwho (was|is|were)\b/.test(lower)) {
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nt = norm(text);
+    let hit = null;
+    const words = ` ${lower.replace(/[^a-z0-9]+/g, ' ')} `;
+    RAW.forEach(d => { const n = norm(d.team); if ((n.length >= 6 ? nt.includes(n) : n.length >= 4 && words.includes(` ${n} `)) && (!hit || n.length > norm(hit.team).length)) hit = d; });
+    if (hit) {
+      const seasons = [...new Set(RAW.filter(d => d.manager === hit.manager && norm(d.team) === norm(hit.team)).map(d => d.season))].sort((a, b) => a - b);
+      return `"${hit.team}" was ${hit.manager}'s team name (${seasons.join(', ')}).`;
+    }
+  }
+
+  // Luck index (as on the Season Stats tab, over every season): points rank minus wins rank, averaged.
+  if (/\b(un)?luck(y|iest|ier|iness)?\b|\bluck index\b/.test(lower)) {
+    const totals = {}; managers.forEach(m => { totals[m] = { sum: 0, n: 0 }; });
+    [...new Set(RAW.map(d => d.season))].forEach(season => {
+      const rank = cat => { const r = {}; managers.map(m => ({ m, v: valueFor(m, season, cat) })).filter(x => x.v !== null).sort((a, b) => b.v - a.v).forEach((x, i) => { r[x.m] = i + 1; }); return r; };
+      const wr = rank('Wins'), pr = rank('Pts For');
+      managers.forEach(m => { if (wr[m] && pr[m]) { totals[m].sum += pr[m] - wr[m]; totals[m].n++; } });
+    });
+    const rows = managers.map(m => ({ m, v: totals[m].n ? totals[m].sum / totals[m].n : 0 })).sort((a, b) => b.v - a.v);
+    const desc = v => v > 0.5 ? 'wins more than the points suggest' : v < -0.5 ? 'points don’t turn into wins' : 'about right';
+    if (mgrs.length === 1) {
+      const i = rows.findIndex(r => r.m === mgrs[0]);
+      return `${mgrs[0]}'s luck index: ${rows[i].v > 0 ? '+' : ''}${rows[i].v.toFixed(2)} (${desc(rows[i].v)}) -- #${i + 1} luckiest of ${rows.length}.`;
+    }
+    const pick = /\bunluck/.test(lower) ? rows[rows.length - 1] : rows[0];
+    return `${/\bunluck/.test(lower) ? 'Unluckiest' : 'Luckiest'} manager by luck index: ${pick.m} (${pick.v > 0 ? '+' : ''}${pick.v.toFixed(2)}, ${desc(pick.v)}).`;
+  }
+
+  // "How many times has Brad won?" -- ambiguous between games and titles, so answer both.
+  if (mgrs.length === 1 && /\bhow (many times|often) (has|did|have) .*\bwon\b/.test(lower) && !/\b(playoff|title|championship|game|games)\b/.test(lower)) {
+    const m = mgrs[0], t = titlesOf(m);
+    const w = RAW.filter(d => d.manager === m && d.category === 'Wins').reduce((a, b) => a + b.value, 0);
+    const pw = RAW.filter(d => d.manager === m && d.category === 'Playoff Wins').reduce((a, b) => a + b.value, 0);
+    return `${m}: ${t.length} championship${t.length === 1 ? '' : 's'}${t.length ? ` (${t.join(', ')})` : ''}, ${fmt(w)} regular-season wins and ${fmt(pw)} playoff wins.`;
+  }
+
+  // A player's keeper history (any manager).
+  if (player && !mgrs.length && /\bkept\b|\bkeepers?\b/.test(lower)) {
+    const rows = KEEPER_HISTORY.filter(k => k.player === player).sort((a, b) => a.year - b.year);
+    return rows.length ? `${player} has been kept ${rows.length} time${rows.length === 1 ? '' : 's'}: ` + rows.map(k => `${k.year} by ${k.manager} (Round ${k.round})`).join(', ') + '.'
+      : `${player} has never been kept in this league.`;
+  }
+
+  // A player's trade value (FantasyCalc, loaded by the Trade Analyzer).
+  if (player && /\b(worth|trade value|value)\b/.test(lower)) {
+    const list = typeof fcValues !== 'undefined' && fcValues && fcValues.dynasty;
+    if (!list) return `Trade values come from FantasyCalc and load in the Trade Analyzer tab -- open it, then ask again.`;
+    const hit = list.find(x => x.name.toLowerCase() === player.toLowerCase());
+    const red = (fcValues.redraft || []).find(x => x.name.toLowerCase() === player.toLowerCase());
+    return hit ? `${player}: FantasyCalc dynasty value ${hit.value.toLocaleString()}${red ? `, redraft ${red.value.toLocaleString()}` : ''}.` : `${player} isn't in FantasyCalc's current values.`;
+  }
+
+  // Safety net: the question has a meaning-changing word that nothing above could answer precisely.
+  // The general answers below would ignore it and answer a different question, so don't let them.
+  if (q.against || q.single || q.scoreRecord || (q.average && /\b(points?|pts|score[sd]?|scoring|ppg)\b/.test(lower)) || q.never || q.drought || q.week || q.losing) {
+    return null;
+  }
+
+  // ===== General answers =====
 
   // Head-to-head record
-  if (mgrs.length >= 2 && /(record against|\bvs?\b|versus|head.to.head|h2h|compare|against|\brecord\b)/.test(lower)) {
-    const all = h2hRecord(mgrs[0], mgrs[1], 'all');
+  if (mgrs.length >= 2 && /(record against|\bvs?\b|versus|head.to.head|h2h|compare|against|\brecord\b|better than|who is better|who's better|\bbeat(en)?\b)/.test(lower)) {
+    const all = h2hRecord(mgrs[0], mgrs[1], q.playoffs ? 'playoff' : q.regular ? 'regular' : 'all');
     const games = yr ? all.games.filter(g => g.season === yr) : all.games;
-    const when = yr ? `in ${yr}` : 'all-time';
-    if (games.length === 0) return yr ? `${mgrs[0]} and ${mgrs[1]} didn't play each other in ${yr}${yr === CURRENT_SEASON.year ? ' (so far)' : ''}.` : `${mgrs[0]} and ${mgrs[1]} have never played each other.`;
+    const when = (yr ? `in ${yr}` : 'all-time') + (q.playoffs ? ' in the playoffs' : q.regular ? ' in the regular season' : '');
+    if (/better than|who is better|who's better/.test(lower) && !yr && !q.playoffs) {
+      const career = m => { const w = RAW.filter(d => d.manager === m && d.category === 'Wins').reduce((a, b) => a + b.value, 0), l = RAW.filter(d => d.manager === m && d.category === 'Losses').reduce((a, b) => a + b.value, 0); return { pct: winPctOf(w, l, tiesFor(m)), titles: titlesOf(m).length }; };
+      const a = career(mgrs[0]), b = career(mgrs[1]);
+      return `Head to head, ${mgrs[0]} is ${recordStr(all.w1, all.w2, all.ties)} against ${mgrs[1]}. Career: ${mgrs[0]} ${(a.pct * 100).toFixed(1)}% wins and ${a.titles} title${a.titles === 1 ? '' : 's'}; ` +
+        `${mgrs[1]} ${(b.pct * 100).toFixed(1)}% and ${b.titles} title${b.titles === 1 ? '' : 's'}. You can decide who's better.`;
+    }
+    if (games.length === 0) return yr ? `${mgrs[0]} and ${mgrs[1]} didn't play each other ${when}${yr === CURRENT_SEASON.year ? ' (so far)' : ''}.` : `${mgrs[0]} and ${mgrs[1]} have never played each other${q.playoffs ? ' in the playoffs' : ''}.`;
     let w1 = 0, w2 = 0, ties = 0, pts1 = 0, pts2 = 0;
     games.forEach(g => {
       const s1 = g.mA === mgrs[0] ? g.sA : g.sB, s2 = g.mA === mgrs[0] ? g.sB : g.sA;
@@ -4160,8 +4484,19 @@ function askAnswer(raw) {
     return `${yr} draft order: ` + DRAFTS[yr].draft_order.map((t,i) => `${i+1}. ${managerForTeam(yr,t)}`).join(', ');
   }
 
+  // Final placement in a season: "who finished last in 2022", "2024 runner-up", "who came 3rd in 2019".
+  const placeM = lower.match(/\b(first|second|third|fourth|fifth|last|(\d{1,2})(st|nd|rd|th))\b/);
+  if (!mgrs.length && yr && (/\brunner.?up\b/.test(lower) || (placeM && /\b(finish(ed)?|came|placed?)\b/.test(lower)))) {
+    if (!finishedSet.has(yr)) return RAW.some(d => d.season === yr) ? `The ${yr} season is still in progress -- final places aren't set yet.` : null;
+    const rows = RAW.filter(d => d.season === yr && d.category === 'Playoff Standings');
+    const words = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, last: rows.length };
+    const n = /\brunner.?up\b/.test(lower) ? 2 : placeM[2] ? Number(placeM[2]) : words[placeM[1]];
+    const r = rows.find(d => d.value === n);
+    if (r) return `${r.manager} finished ${n}${({ 1: 'st', 2: 'nd', 3: 'rd' })[n] || 'th'} in ${yr}${n === 1 ? ' (champion)' : n === rows.length ? ' (last -- the Sacko)' : ''}, playing as "${r.team}".`;
+  }
+
   // Season champion / who won a given year
-  if (yr && /(champion|who won|winner|title)/.test(lower)) {
+  if (yr && /(champion|who won|winner|title)/.test(lower) && !/toilet|consolation|sacko|last place/.test(lower) && !/\bwon (the )?(most|fewest|more) (games|matchups)\b/.test(lower)) {
     const champ = RAW.find(d => d.season===yr && d.category==='Playoff Standings' && d.value===1);
     if (champ) return `${champ.manager} won the ${yr} championship (playing as "${champ.team}").`;
     // A real, existing season (e.g. the current in-progress one) can now legitimately have no
@@ -4181,14 +4516,17 @@ function askAnswer(raw) {
   // every season 2012-2025 against the actual first-round bracket. Finished seasons only.
   const PLAYOFF_TEAMS = 8;
   const playoffSeasonsOf = m => [...getFinishedSeasons()].filter(s => (valueFor(m, s, 'Regular Season Standings') || 99) <= PLAYOFF_TEAMS).sort((a, b) => a - b);
-  if (mgrs.length === 1 && /((made|make|making|reached|been to|missed) (the )?playoffs|playoff (appearance|berth|record|history))/.test(lower)) {
+  if (mgrs.length === 1 && /((made|make|making|reached|been to|missed) (the )?playoffs|playoff (appearance|berth|record|history)|record in the playoffs|in the playoffs|\bfinals\b|championship games?|title games?)/.test(lower)) {
     const m = mgrs[0];
     const seasons = playoffSeasonsOf(m), all = [...getFinishedSeasons()].filter(s => valueFor(m, s, 'Playoff Standings') !== null);
     const titles = all.filter(s => valueFor(m, s, 'Playoff Standings') === 1);
     const finals = all.filter(s => valueFor(m, s, 'Playoff Standings') <= 2);
     const wins = all.reduce((n, s) => n + (valueFor(m, s, 'Playoff Wins') || 0), 0);
+    const pg = managerGames(r => r.m === m && r.type === 'playoff' && finishedSet.has(r.season));
+    const pw = pg.filter(r => r.won).length, pl = pg.filter(r => r.lost).length;
     return `${m} has made the playoffs ${seasons.length} times in ${all.length} seasons (${seasons.join(', ') || 'never'}): ` +
-      `${wins} playoff win${wins === 1 ? '' : 's'}, ${finals.length} final${finals.length === 1 ? '' : 's'}, ${titles.length} championship${titles.length === 1 ? '' : 's'}${titles.length ? ` (${titles.join(', ')})` : ''}.`;
+      `${wins} playoff win${wins === 1 ? '' : 's'} on the way to the title, ${finals.length} final${finals.length === 1 ? '' : 's'}${finals.length ? ` (${finals.join(', ')})` : ''}, ` +
+      `${titles.length} championship${titles.length === 1 ? '' : 's'}${titles.length ? ` (${titles.join(', ')})` : ''}. All playoff games, consolation included: ${pw}-${pl}.`;
   }
   if (!mgrs.length && yr && /((made|make|in) the playoffs|playoff (teams|field|seeds))/.test(lower)) {
     if (!getFinishedSeasons().has(yr)) return RAW.some(d => d.season === yr) ? `The ${yr} season is still in progress -- the playoff field isn't set yet. The live standings are on the Current Season tab.` : null;
@@ -4239,7 +4577,7 @@ function askAnswer(raw) {
   }
 
   // ---- Matchup lines (what the scoreboard is showing this week).
-  if (/\b(betting )?lines?\b|\bspreads?\b|\bfavou?r(ed|ite|ites)\b|\bodds\b/.test(lower) && !/lineup|line.up/.test(lower)) {
+  if ((linesWord || /\bfavou?red\b|\bwho('s| is) the favou?rite\b|\bfavou?rites? (this|in|for)\b/.test(lower)) && !/lineup|line.up|'s favou?rite/.test(lower)) {
     if (/(record|how (have|did|are)|track record|accura)/.test(lower)) {
       const season = String(CURRENT_SEASON.year);
       const rec = typeof SAVED_LINES !== 'undefined' && SAVED_LINES ? savedLinesRecord(SAVED_LINES, season) : null;
@@ -4352,7 +4690,7 @@ function askAnswer(raw) {
 
   // Roster lookup: "who is on X's roster" / "what does X have" -- deliberately checked after
   // Keeper History above, since "who has X kept" would otherwise match a loose "who...has" here first.
-  if (mgrs.length === 1 && /(roster|team|squad|what does .* have|who does .* have)/.test(lower) && typeof rosters2025Data !== 'undefined') {
+  if (mgrs.length === 1 && /(roster|team|squad|what does .* have|who does .* have)/.test(lower) && !/\b(name|named|called)\b/.test(lower) && (!yr || yr === 2025) && typeof rosters2025Data !== 'undefined') {
     const players = rosters2025Data.filter(r => r.manager === mgrs[0]);
     if (players.length) {
       const list = players.map(p => `${p.player} (${p.position})`).join(', ');
@@ -4364,7 +4702,7 @@ function askAnswer(raw) {
   // is 2025 season-end (plus 2026 keepers), so answers say exactly that rather than "currently" --
   // a 2025 roster is not a current one (e.g. Jonathan Taylor ended 2025 on Josh's team but was
   // drafted by Mac in 2026).
-  if (player && /(who (has|owns)|whose roster|which team)/.test(lower) && typeof rosters2025Data !== 'undefined') {
+  if (player && /(who (has|had|owns|owned)|whose roster|which team)/.test(lower) && typeof rosters2025Data !== 'undefined') {
     const keeper26 = KEEPER_SELECTIONS_2026.find(k => k.player.toLowerCase() === player.toLowerCase());
     const keeperNote = keeper26 ? ` ${keeper26.manager} kept him for ${CURRENT_SEASON.year} (Round ${keeper26.round}).` : '';
     const hit = rosters2025Data.find(r => r.player.toLowerCase() === player.toLowerCase());
@@ -4384,7 +4722,7 @@ function askAnswer(raw) {
 
   // Standings leader for one season ("who has the most wins this season", "who is in first place").
   // Ties stay ties, same as Live Standings: sorted by wins then points for, and anyone level on both shares the lead.
-  if (!mgrs.length && /(most wins|best record|first place|in first|standings leader|leading the league|top of the standings)/.test(lower) &&
+  if (!mgrs.length && /(most wins|won the most games|best record|first place|in first|standings leader|leading the league|top of the standings)/.test(lower) &&
       (yr || /first place|in first|standings leader|leading the league|top of the standings/.test(lower))) {
     const season = yr || Math.max(...RAW.map(d => d.season));
     const rows = managers.map(m => ({ m, w: valueFor(m, season, 'Wins'), l: valueFor(m, season, 'Losses'), t: tiesFor(m, season), pf: valueFor(m, season, 'Pts For') }))
@@ -4398,7 +4736,7 @@ function askAnswer(raw) {
   }
 
   // Single-season records (finished seasons only) -- "most points in a single season" etc.
-  if (!mgrs.length && /(single.season|one season|in a season|single year)/.test(lower)) {
+  if (!mgrs.length && /(single.season|one season|in a (regular )?season|single year)/.test(lower)) {
     const finished = getFinishedSeasons();
     const record = (cat, pickMax) => {
       const rows = RAW.filter(d => d.category === cat && finished.has(d.season));
@@ -4410,8 +4748,18 @@ function askAnswer(raw) {
     if (/win/.test(lower)) return `${least ? 'Fewest' : 'Most'} wins in a single season: ${record('Wins', !least)}.`;
   }
 
+  // Points leader for one season ("who has scored the most points this season").
+  if (!mgrs.length && yr && /\b(most|fewest|least) (points|pts)\b|\bscored the (most|fewest|least)\b/.test(lower)) {
+    const rows = managers.map(m => ({ m, v: valueFor(m, yr, 'Pts For') })).filter(r => r.v !== null).sort((a, b) => least ? a.v - b.v : b.v - a.v);
+    if (rows.length) {
+      const weeks = GAMES.filter(g => g.season === yr && g.type === 'regular').reduce((mx, g) => Math.max(mx, g.week), 0);
+      return `${least ? 'Fewest' : 'Most'} points in ${yr} (${finishedSet.has(yr) ? 'regular season' : `through Week ${weeks}`}): ` +
+        `${rows.filter(r => r.v === rows[0].v).map(r => r.m).join(' & ')} -- ${fmt(rows[0].v, 1)}.`;
+    }
+  }
+
   // Career wins leader
-  if (/(most (career )?wins|winningest)/.test(lower)) {
+  if (!yr && /(most (career )?wins|winningest)/.test(lower)) {
     const totals = managers.map(m => ({ m, v: RAW.filter(d=>d.manager===m&&d.category==='Wins').reduce((a,b)=>a+b.value,0) }));
     const max = Math.max(...totals.map(t=>t.v));
     const leaders = totals.filter(t=>t.v===max).map(t=>t.m);
@@ -4419,7 +4767,7 @@ function askAnswer(raw) {
   }
 
   // Career points leader
-  if (/(most (career )?points|highest scor)/.test(lower) && !mgrs.length) {
+  if (/(most (career )?points|highest scor)/.test(lower) && !mgrs.length && !yr) {
     const totals = managers.map(m => ({ m, v: RAW.filter(d=>d.manager===m&&d.category==='Pts For').reduce((a,b)=>a+b.value,0) }));
     const max = Math.max(...totals.map(t=>t.v));
     const leaders = totals.filter(t=>t.v===max).map(t=>t.m);
@@ -4483,14 +4831,14 @@ function askAnswer(raw) {
   // Closest game / biggest blowout all-time
   const gamePool = yr ? GAMES.filter(g => g.season === yr) : GAMES;
   const poolLabel = yr ? `of ${yr}` : 'ever';
-  if (/(closest game|closest margin|narrowest)/.test(lower) && gamePool.length) {
+  if (!mgrs.length && /(closest game|closest margin|narrowest)/.test(lower) && gamePool.length) {
     const sorted = gamePool.filter(g=>g.sA!==g.sB).sort((a,b)=>marginOf(a)-marginOf(b));
     const g = sorted[0];
     const win = winnerOf(g);
     const lose = win===g.mA ? g.mB : g.mA;
     return `Closest game ${poolLabel}: ${win} beat ${lose} ${fmt(Math.max(g.sA,g.sB),1)}-${fmt(Math.min(g.sA,g.sB),1)} in ${g.season} Week ${g.week}, a margin of just ${fmt(marginOf(g),2)} points.`;
   }
-  if (/(blowout|biggest margin|biggest win|most lopsided)/.test(lower) && gamePool.length) {
+  if (!mgrs.length && /(blowout|biggest margin|biggest win|most lopsided)/.test(lower) && gamePool.length) {
     const sorted = gamePool.filter(g=>g.sA!==g.sB).sort((a,b)=>marginOf(b)-marginOf(a));
     const g = sorted[0];
     const win = winnerOf(g);
@@ -4547,7 +4895,7 @@ function askAnswer(raw) {
     scoring: {
       aliases: ['scoring', 'points per', 'ppr', 'point value', 'how many points', 'touchdown worth',
         'reception worth', 'field goal', 'passing yard', 'rushing yard', 'receiving yard', 'points allowed'],
-      html: LEAGUE_SETTINGS.scoring, fallback: "Scoring settings haven't been added yet.", guard: true,
+      html: LEAGUE_SETTINGS.scoring, fallback: "Scoring settings haven't been added yet.", guard: !mgrs.length && !player && !/\b(will|did|have|has|had)\b.*\bscored?\b/.test(lower),
     },
     roster: {
       aliases: ['roster', 'starting lineup', 'bench spot', 'injured reserve', 'ir slot', 'flex spot', 'lineup requirement'],
@@ -4611,7 +4959,12 @@ function renderAskLog() {
     <div class="ask-turn">
       <div class="ask-q">${escapeHtml(t.q)}</div>
       <div class="ask-a${t.miss?' miss':''}">${t.a}</div>
+      ${t.suggest && t.suggest.length ? `<div class="ask-suggest-row">${t.suggest.map(s => `<button class="ask-chip ask-suggest" type="button" data-q="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}</div>` : ''}
     </div>`).join('');
+  log.querySelectorAll('.ask-suggest').forEach(b => b.addEventListener('click', () => {
+    document.getElementById('askInput').value = b.dataset.q;
+    handleAsk();
+  }));
   log.scrollTop = log.scrollHeight;
 }
 
@@ -4624,15 +4977,17 @@ function handleAsk() {
   const result = askAnswer(q);
   let answer;
   let miss = false;
+  let suggest = [];
   if (result === null) {
-    answer = `I couldn't match that to something I can look up. Try asking about a manager's record, a head-to-head matchup, a season champion, a draft pick, or a league rule — or click one of the suggestions above.`;
+    suggest = askSuggestions(q);
+    answer = `I couldn't answer that one precisely -- rather than guess, here are some questions I can answer${suggest.length ? '' : ' (or try a suggestion above)'}.`;
     miss = true;
   } else if (typeof result === 'object' && result.html) {
     answer = result.html;
   } else {
     answer = result;
   }
-  askHistory.push({ q, a: answer, miss });
+  askHistory.push({ q, a: answer, miss, suggest });
   input.value = '';
   renderAskLog();
 }
