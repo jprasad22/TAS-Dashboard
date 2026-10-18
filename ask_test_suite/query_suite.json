@@ -660,5 +660,115 @@
       "expect": "answer",
       "contains": "0-0-1"
     }
+  ],
+  "playoff_history": [
+    {
+      "q": "how many times has Stuart made the playoffs",
+      "expect": "answer",
+      "contains": "Stuart Duncan has made the playoffs"
+    },
+    {
+      "q": "Stuart playoff record",
+      "expect": "answer",
+      "contains": "playoff win"
+    },
+    {
+      "q": "who made the playoffs in 2025",
+      "expect": "answer",
+      "contains": "1. Brad Harnum"
+    },
+    {
+      "q": "who has the most playoff appearances",
+      "expect": "answer",
+      "contains": "Most playoff appearances"
+    },
+    {
+      "q": "how many teams make the playoffs",
+      "expect": "answer",
+      "not_contains": "playoff appearances"
+    }
+  ],
+  "all_time_team_lookups": [
+    {
+      "q": "who was the best QB in 2019",
+      "expect": "answer",
+      "contains": "Lamar Jackson"
+    },
+    {
+      "q": "best RB in 2025",
+      "expect": "answer",
+      "contains": "Christian McCaffrey"
+    },
+    {
+      "q": "best tight end ever",
+      "expect": "answer",
+      "contains": "Best TE season ever"
+    },
+    {
+      "q": "all-time team",
+      "expect": "answer",
+      "contains": "All-Time Greatest Team"
+    },
+    {
+      "q": "best fantasy season ever",
+      "expect": "answer",
+      "contains": "Christian McCaffrey"
+    },
+    {
+      "q": "who was the best player in 2024",
+      "expect": "answer",
+      "contains": "Lamar Jackson"
+    },
+    {
+      "q": "best value keeper",
+      "expect": "answer",
+      "contains": "Best value keeper"
+    }
+  ],
+  "manager_best_worst_season": [
+    {
+      "q": "Jerome's best season",
+      "expect": "answer",
+      "contains": "best season by Power Score"
+    },
+    {
+      "q": "Josh's worst season",
+      "expect": "answer",
+      "contains": "worst season by Power Score"
+    }
+  ],
+  "matchup_lines_and_recap": [
+    {
+      "q": "how have the betting lines done",
+      "expect": "answer",
+      "contains": "backtest"
+    },
+    {
+      "q": "what's the line for Jerome's game",
+      "expect": "answer",
+      "contains": "scoreboard"
+    },
+    {
+      "q": "starting lineup requirements",
+      "expect": "answer",
+      "not_contains": "Line:"
+    },
+    {
+      "q": "where is the weekly recap",
+      "expect": "answer",
+      "contains": "Weekly Recap tab"
+    }
+  ],
+  "tied_leaders_regression__recheck_after_season_end": [
+    {
+      "q": "who has the most playoff wins",
+      "expect": "answer",
+      "contains": "Jerome Prasad & Mac James (tied)"
+    },
+    {
+      "q": "who has the most championships",
+      "expect": "answer",
+      "contains": "(tied)"
+    }
   ]
 }

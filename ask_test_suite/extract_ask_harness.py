@@ -52,7 +52,7 @@ REQUIRED_FUNCTIONS = [
     'scorePowerRankingRows', 'computePowerRankings', 'computeCareerPowerRankings',
     'computeValueKeepers', 'levenshtein', 'findManagersInText', 'findYearInText',
     'findPlayerInText', 'findRelativeSeason', 'h2hRecord', 'winnerOf', 'marginOf', 'formatDateTime',
-    'computeKeeperLockDate', 'askAnswer',
+    'computeKeeperLockDate', 'allTimeRows', 'bestLineup', 'savedLinesRecord', 'askAnswer',
 ]
 
 REQUIRED_CONST_RANGES = [
@@ -78,6 +78,12 @@ def build_harness(dashboard_path, raw_path, games_path, output_path):
     data_dir = os.path.dirname(os.path.abspath(raw_path))
     pieces.append(f"const DRAFTS = require({json.dumps(os.path.join(data_dir, 'drafts.json'))});")
     pieces.append(f"const ROSTERS_2025_VERIFIED = require({json.dumps(os.path.join(data_dir, 'rosters_2025.json'))});")
+    pieces.append(f"const ALL_TIME_TEAM_DATA = require({json.dumps(os.path.join(data_dir, 'all_time_team.json'))});")
+    # One-line constants used by the All-Time Team helpers.
+    for name in ('LINEUP_SLOTS', 'FLEX_POSITIONS', 'ALL_TIME_POSITIONS'):
+        pieces.append(extract_between(html, f'const {name} = ', '\n'))
+    # Live scoreboard state Ask reads; null in the harness (no live Sleeper data here).
+    pieces.append("let CURRENT_LINES = null, SAVED_LINES = null;")
 
     for start, end in REQUIRED_CONST_RANGES:
         pieces.append(extract_between(html, start, end))
