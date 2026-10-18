@@ -95,15 +95,14 @@ def check_json_file(path: Path, min_rows: int, result: Result):
     return data
 
 
-def check_draft_data(html: str, result: Result):
-    match = re.search(r"const DRAFTS = (\{.*?\n\});\s*\n", html, re.S)
-    if not match:
-        result.warn("Could not locate 'const DRAFTS = {...};' block to check pick counts")
+def check_draft_data(path: Path, result: Result):
+    if not path.exists():
+        result.fail(f"drafts.json: file not found at {path}")
         return
     try:
-        drafts = json.loads(match.group(1))
+        drafts = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        result.fail(f"DRAFTS block in HTML is not valid JSON ({e.msg})")
+        result.fail(f"drafts.json: NOT VALID JSON ({e.msg} at line {e.lineno})")
         return
     n_seasons = len(drafts)
     n_picks = sum(len(v.get("picks", [])) for v in drafts.values())
@@ -190,6 +189,89 @@ def check_dangling_ids(html: str, result: Result):
         result.ok(f"All {len(referenced)} getElementById() references resolve to a real id")
 
 
+def check_rosters_2025(path: Path, result: Result):
+    if not path.exists():
+        result.fail(f"rosters_2025.json: file not found at {path}")
+        return
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        result.fail(f"rosters_2025.json: NOT VALID JSON ({e.msg})")
+        return
+    if len(rows) != 185 or any(not r.get("manager") or not r.get("player") or r.get("acquired") == "NeedsSleeperSync" for r in rows):
+        result.fail(f"rosters_2025.json: expected 185 fully resolved rows, got {len(rows)}")
+    else:
+        result.ok("rosters_2025.json: 185 fully resolved roster rows")
+
+
+def check_assets(repo_root: Path, html: str, result: Result):
+    """Every local file index.html points at (src/href, not http) must exist in the repo."""
+    refs = sorted(set(re.findall(r'(?:src|href)="((?:assets|data)/[^"]+)"', html)
+                      + re.findall(r'content="https://jprasad22\.github\.io/TAS-Dashboard/((?:assets|data)/[^"]+)"', html)))
+    missing = [r for r in refs if not (repo_root / r).exists()]
+    if missing:
+        result.fail(f"index.html references missing file(s): {missing}")
+    else:
+        result.ok(f"All {len(refs)} local file references in index.html exist")
+
+
+def check_lines(path: Path, result: Result):
+    """data/lines.json (optional): saved pre-kickoff matchup lines, written by tools/snapshot_lines.js."""
+    if not path.exists():
+        result.ok("lines.json: not present yet (optional)")
+        return
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        result.fail(f"lines.json: NOT VALID JSON ({e.msg}) -- the scoreboard will fall back to live lines")
+        return
+    need = {"mA", "mB", "favourite", "spread", "winA", "winB", "oddsA", "oddsB", "total"}
+    bad = [f"{s}/{w}" for s, weeks in saved.items() for w, snap in weeks.items()
+           if not (snap.get("takenAt") and snap.get("games") and all(need <= set(g) for g in snap["games"]))]
+    if bad:
+        result.fail(f"lines.json: malformed snapshot(s): {bad}")
+    else:
+        result.ok(f"lines.json: {sum(len(w) for w in saved.values())} saved weekly snapshot(s)")
+
+
+def check_recaps(path: Path, result: Result):
+    """data/recaps.json: { "<season>": { "<week>": "<html>" } }, loaded by the Weekly Recap tab."""
+    if not path.exists():
+        result.fail(f"recaps.json: file not found at {path}")
+        return
+    try:
+        recaps = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        result.fail(f"recaps.json: NOT VALID JSON ({e.msg} at line {e.lineno}) -- the Weekly Recap tab won't load")
+        return
+    bad = [f"{s}/{w}" for s, weeks in recaps.items() for w, html in weeks.items()
+           if not (s.isdigit() and w.isdigit() and isinstance(html, str) and html.strip().startswith("<h3"))]
+    if bad:
+        result.fail(f"recaps.json: malformed entries (expect season/week digit keys and HTML starting with <h3): {bad[:5]}")
+    else:
+        n = sum(len(w) for w in recaps.values())
+        result.ok(f"recaps.json: valid, {n} recap(s) across {len(recaps)} season(s)")
+
+
+def check_playoff_wins(raw, result: Result):
+    """In the league's 8-team, three-round playoff, playoff wins follow from the final place: champion 3,
+    runner-up 2, semi-final losers 1, everyone else 0 (consolation/placement wins don't count). Holds for
+    every season 2012-2025 (after fixing 2023's runner-up). If the playoff format ever changes, update this."""
+    expected = {1: 3, 2: 2, 3: 1, 4: 1}
+    vals = {}
+    for r in raw:
+        if r.get("category") in ("Playoff Standings", "Playoff Wins"):
+            vals.setdefault((r["season"], r["manager"]), {})[r["category"]] = r["value"]
+    bad = [f"{s} {m}: place {int(v['Playoff Standings'])}, {v.get('Playoff Wins')} playoff wins (expected {expected.get(int(v['Playoff Standings']), 0)})"
+           for (s, m), v in sorted(vals.items()) if "Playoff Standings" in v
+           and v.get("Playoff Wins") != expected.get(int(v["Playoff Standings"]), 0)]
+    seasons = len({s for (s, m), v in vals.items() if "Playoff Standings" in v})
+    if bad:
+        result.fail("Playoff Wins don't match final places: " + "; ".join(bad[:5]))
+    else:
+        result.ok(f"Playoff Wins match final places for all {seasons} finished seasons")
+
+
 def check_raw_duplicates(raw, result: Result):
     seen, dupes = set(), []
     for r in raw:
@@ -256,15 +338,14 @@ def check_raw_vs_games(raw, games, result: Result):
     if not finished_failures:
         result.ok(f"RAW season totals match GAMES for every finished season ({len(finished)})")
 
-def check_all_time_team(html: str, raw, result: Result):
-    match = re.search(r"const ALL_TIME_TEAM_DATA = (\{[\s\S]*?\n\});\n", html)
-    if not match:
-        result.warn("Could not locate ALL_TIME_TEAM_DATA block")
+def check_all_time_team(path: Path, raw, result: Result):
+    if not path.exists():
+        result.fail(f"all_time_team.json: file not found at {path} -- regenerate it with tools/build_all_time_team.js")
         return
     try:
-        data = json.loads(match.group(1))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        result.fail(f"ALL_TIME_TEAM_DATA is not valid JSON ({e.msg}) -- regenerate it with tools/build_all_time_team.js")
+        result.fail(f"all_time_team.json is not valid JSON ({e.msg}) -- regenerate it with tools/build_all_time_team.js")
         return
     finished = {r["season"] for r in raw if r.get("category") == "Playoff Standings"} if isinstance(raw, list) else set()
     missing = sorted(finished - {int(s) for s in data})
@@ -293,12 +374,17 @@ def main():
     games = check_json_file(games_path, MIN_GAMES_ROWS, result)
     if isinstance(raw, list):
         check_raw_duplicates(raw, result)
+        check_playoff_wins(raw, result)
     if isinstance(games, list):
         check_games_duplicates(games, result)
     if isinstance(raw, list) and isinstance(games, list):
         check_raw_vs_games(raw, games, result)
-    check_draft_data(html, result)
-    check_all_time_team(html, raw, result)
+    check_draft_data(repo_root / "data" / "drafts.json", result)
+    check_recaps(repo_root / "data" / "recaps.json", result)
+    check_lines(repo_root / "data" / "lines.json", result)
+    check_all_time_team(repo_root / "data" / "all_time_team.json", raw, result)
+    check_rosters_2025(repo_root / "data" / "rosters_2025.json", result)
+    check_assets(repo_root, html, result)
     check_tag_balance(html, result)
     check_brace_balance(html, result)
     check_async_helpers(html, result)

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds ALL_TIME_TEAM_DATA in index.html: each finished season's top 5 fantasy scorers at every
+// Builds data/all_time_team.json (ALL_TIME_TEAM_DATA on the page): each finished season's top 5 fantasy scorers at every
 // position (QB/RB/WR/TE/K/DEF), scored with this league's own rules, plus who drafted them.
 //
 //   node tools/build_all_time_team.js <cache-dir>
@@ -27,8 +27,9 @@ const grab = (start, end) => { const s = html.indexOf(start); if (s < 0) throw n
 const fn = name => { const s = html.indexOf('function ' + name + '('); if (s < 0) throw new Error('index.html is missing ' + name); return html.slice(s, html.indexOf('\n}\n', s) + 3); };
 const RAW = JSON.parse(fs.readFileSync('data/raw.json'));
 const GAMES = JSON.parse(fs.readFileSync('data/games.json'));
+const DRAFTS = JSON.parse(fs.readFileSync('data/drafts.json'));
 eval([grab('const SLEEPER_LEAGUE_ID =', ';\n'), grab('const PTS_ALLOW_TIERS = [', '];\n'), fn('leaguePoints'),
-      grab('const DRAFTS = {', '\n};\n'), grab('const KEEPER_COUNTS = {', '};\n'), fn('draftNorm'), fn('managerForTeam')]
+      grab('const KEEPER_COUNTS = {', '};\n'), fn('draftNorm'), fn('managerForTeam')]
   .join('\n').replace(/^const /gm, 'var '));
 
 async function cached(file, url) {
@@ -108,10 +109,6 @@ const normName = s => { const n = norm(s); return ALIASES[n] || n; };
     console.log(`${season}: weeks ${weeks[0]}-${weeks[weeks.length - 1]}, ${rows.length} scored players`);
   }
 
-  const block = 'const ALL_TIME_TEAM_DATA = {\n' +
-    Object.entries(out).map(([s, d]) => `  "${s}": ${JSON.stringify(d)}`).join(',\n') + '\n};\n';
-  const re = /const ALL_TIME_TEAM_DATA = \{[\s\S]*?\n\};\n/;
-  if (!re.test(html)) throw new Error('ALL_TIME_TEAM_DATA block not found in index.html');
-  fs.writeFileSync('index.html', html.replace(re, () => block));
-  console.log(`Wrote ALL_TIME_TEAM_DATA for ${seasons.length} seasons (${seasons[0]}-${seasons[seasons.length - 1]}).`);
+  fs.writeFileSync('data/all_time_team.json', JSON.stringify(out));
+  console.log(`Wrote data/all_time_team.json for ${seasons.length} seasons (${seasons[0]}-${seasons[seasons.length - 1]}).`);
 })().catch(e => { console.error(e.message); process.exit(1); });

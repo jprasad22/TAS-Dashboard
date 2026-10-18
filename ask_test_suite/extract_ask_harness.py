@@ -18,6 +18,7 @@ plus every function it depends on, so it can also be used to test those directly
 """
 
 import sys
+import os
 import json
 
 
@@ -59,7 +60,6 @@ REQUIRED_CONST_RANGES = [
     ('const PALETTE = ', ';\n'),
     ('const KEEPER_COUNTS = {', '};\n'),
     ('const KEEPER_SELECTIONS_2026 = [', '];\n'),
-    ('const DRAFTS = {', '\n};\n'),
     ('const LEAGUE_SETTINGS = {', '};\n'),
     ('const CURRENT_SEASON = {', '\n};\n'),
     ('const TICKER_STATS = {', '\n};\n'),
@@ -73,6 +73,10 @@ def build_harness(dashboard_path, raw_path, games_path, output_path):
     pieces = []
     pieces.append(f"const RAW = require({json.dumps(raw_path)});")
     pieces.append(f"const GAMES = require({json.dumps(games_path)});")
+    # DRAFTS and the 2025 rosters live in data/ next to raw.json (moved out of index.html 2026-10-18).
+    data_dir = os.path.dirname(os.path.abspath(raw_path))
+    pieces.append(f"const DRAFTS = require({json.dumps(os.path.join(data_dir, 'drafts.json'))});")
+    pieces.append(f"const ROSTERS_2025_VERIFIED = require({json.dumps(os.path.join(data_dir, 'rosters_2025.json'))});")
 
     for start, end in REQUIRED_CONST_RANGES:
         pieces.append(extract_between(html, start, end))
@@ -87,13 +91,8 @@ def build_harness(dashboard_path, raw_path, games_path, output_path):
     # reads the constant, not the function, so it has to actually be invoked here too.
     pieces.append("const KEEPER_HISTORY = computeKeeperHistory();")
 
-    # rosters2025Data is normally built at runtime from ROSTERS_2025_VERIFIED (static) plus a
-    # live Sleeper sync for players who changed hands mid-season (~99 of 185, per the handoff
-    # doc). This harness has no live Sleeper access, so it uses ROSTERS_2025_VERIFIED directly --
-    # not perfectly accurate for those ~99 traded players, but real enough to actually test the
-    # roster-lookup branch's logic (does it find the right manager, format correctly) rather than
-    # only confirming it doesn't crash on an empty array.
-    pieces.append(extract_between(html, 'const ROSTERS_2025_VERIFIED = [', '];\n'))
+    # rosters2025Data is built at runtime from ROSTERS_2025_VERIFIED, which now holds the final,
+    # fully resolved acquisitions -- so the harness uses it directly, exactly as the page does.
     pieces.append("let rosters2025Data = ROSTERS_2025_VERIFIED;")
 
     with open(output_path, 'w', encoding='utf-8') as f:

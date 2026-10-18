@@ -5,48 +5,40 @@
 //   node tools/recap_facts.js <week> <cache-dir>
 //
 // Run from the repo root. Everything comes from Sleeper or from the dashboard's own code
-// (extracted from index.html, so it can't drift from what the page shows):
+// (loaded out of index.html by tools/lib/dashboard.js, so it can't drift from the page):
 //   - each matchup's final score, every starter's points, and the best bench players
 //   - the all-time series for each pairing, after this week
-//   - standings and Power Rankings movement vs. the previous week (computePowerRankingsThroughWeek)
-//   - the dashboard's matchup lines replayed for the week (renderMatchupLines, H2H cut off before
-//     the week). Uses Sleeper's projections as they stand now, so it can differ slightly from
-//     what the page showed before kickoff -- quote favourites/ranges, not exact spreads.
+//   - standings and Power Rankings movement vs. the previous week
+//   - the week's matchup lines: the snapshot saved before kickoff (data/lines.json) if there is
+//     one; otherwise a replay with Sleeper's current projections, which can differ slightly from
+//     what the page showed -- quote favourites/ranges, not exact spreads, in that case
+//   - season highs and lows
 // Sleeper's Weekly Report (league-chat awards) isn't in the API: that still comes from the person.
 // NFL results: ESPN rejects scripts from some networks; fetch them in the browser instead.
 const fs = require('fs');
 const path = require('path');
+const { loadDashboard } = require('./lib/dashboard');
 
 const week = Number(process.argv[2]);
 const cache = process.argv[3];
 if (!week || !cache) { console.error('usage: node tools/recap_facts.js <week> <cache-dir>'); process.exit(2); }
 fs.mkdirSync(cache, { recursive: true });
 
-const html = fs.readFileSync('index.html', 'utf8');
-const grab = (a, b) => { const s = html.indexOf(a); if (s < 0) throw new Error('index.html is missing ' + a); return html.slice(s, html.indexOf(b, s) + b.length); };
-const fn = (n, pre = 'function ') => { const s = html.indexOf(pre + n + '('); if (s < 0) throw new Error('index.html is missing ' + n); return html.slice(s, html.indexOf('\n}\n', s) + 3); };
-const ALL_GAMES = JSON.parse(fs.readFileSync('data/games.json'));
-var RAW = JSON.parse(fs.readFileSync('data/raw.json'));
-var GAMES = ALL_GAMES;
-eval([grab('const PTS_ALLOW_TIERS = [', '];\n'), fn('leaguePoints'), grab('const SLEEPER_USERNAME_TO_MANAGER = {', '};\n'),
-  grab('const CURRENT_SEASON = {', '\n};\n'), grab('const SLEEPER_LEAGUE_ID =', ';\n'), grab('const LINE_MODEL =', ';\n'),
-  fn('normalCdf'), fn('fairMoneyline'), fn('h2hRecord'), fn('fetchSleeperJson', 'async function '), fn('renderMatchupLines', 'async function '),
-  fn('tiesFor'), fn('winPctOf'), fn('recordStr'), fn('scorePowerRankingRows'), fn('computePowerRankingsThroughWeek')]
-  .join('\n').replace(/^const /gm, 'var '));
-var managers = [...new Set(RAW.map(d => d.manager))].sort();
-
-// api.sleeper.* rejects some default script user-agents
-const realFetch = global.fetch;
-global.fetch = (u, o) => realFetch(u, { ...(o || {}), headers: { 'User-Agent': 'Mozilla/5.0' } });
+const dash = loadDashboard({
+  consts: ['PTS_ALLOW_TIERS', 'SLEEPER_USERNAME_TO_MANAGER', 'CURRENT_SEASON', 'SLEEPER_LEAGUE_ID', 'LINE_MODEL'],
+  functions: ['leaguePoints', 'normalCdf', 'fairMoneyline', 'h2hRecord', 'fetchSleeperJson', 'computeMatchupLines',
+    'tiesFor', 'winPctOf', 'recordStr', 'scorePowerRankingRows', 'computePowerRankingsThroughWeek'],
+});
+const ALL_GAMES = dash.GAMES;
 
 async function playersDb() {
   const f = path.join(cache, 'players_nfl.json');
-  if (!fs.existsSync(f)) fs.writeFileSync(f, await (await fetch('https://api.sleeper.app/v1/players/nfl')).text());
+  if (!fs.existsSync(f)) fs.writeFileSync(f, await (await dash.fetch('https://api.sleeper.app/v1/players/nfl')).text());
   return JSON.parse(fs.readFileSync(f));
 }
 
 (async () => {
-  const season = CURRENT_SEASON.year;
+  const season = dash.CURRENT_SEASON.year;
   if (!ALL_GAMES.some(g => g.season === season && g.week === week)) {
     console.error(`Week ${week} isn't in games.json yet -- run tools/weekly_update.py ${week} first`); process.exit(1);
   }
@@ -56,10 +48,10 @@ async function playersDb() {
     if (!p) return id;
     return `${p.full_name || `${p.first_name} ${p.last_name}`} (${p.position}${p.team ? ', ' + p.team : ''})`;
   };
-  const [users, rosters, matchups] = await Promise.all(['users', 'rosters', `matchups/${week}`].map(x => fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/${x}`)));
-  const uname = {}; users.forEach(u => { uname[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
+  const [users, rosters, matchups] = await Promise.all(['users', 'rosters', `matchups/${week}`].map(x => dash.fetchSleeperJson(`league/${dash.SLEEPER_LEAGUE_ID}/${x}`)));
+  const uname = {}; users.forEach(u => { uname[u.user_id] = dash.SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
   const mgr = {}; rosters.forEach(r => { mgr[r.roster_id] = uname[r.owner_id]; });
-  const byM = {}; matchups.forEach(r => (byM[r.matchup_id] = byM[r.matchup_id] || []).push(r));
+  const byM = {}; matchups.forEach(r => { if (r.matchup_id != null) (byM[r.matchup_id] = byM[r.matchup_id] || []).push(r); });
   const pairs = Object.keys(byM).sort((a, b) => a - b).map(k => byM[k]);
 
   console.log(`=== ${season} WEEK ${week}: MATCHUPS ===`);
@@ -75,29 +67,43 @@ async function playersDb() {
 
   console.log(`\n=== ALL-TIME SERIES AFTER WEEK ${week} ===`);
   pairs.forEach(([a, b]) => {
-    const r = h2hRecord(mgr[a.roster_id], mgr[b.roster_id], 'all');
-    console.log(`  ${mgr[a.roster_id]} ${recordStr(r.w1, r.w2, r.ties)} vs ${mgr[b.roster_id]} (${r.games.length} meetings)`);
+    const r = dash.h2hRecord(mgr[a.roster_id], mgr[b.roster_id], 'all');
+    console.log(`  ${mgr[a.roster_id]} ${dash.recordStr(r.w1, r.w2, r.ties)} vs ${mgr[b.roster_id]} (${r.games.length} meetings)`);
   });
 
   console.log(`\n=== STANDINGS + POWER RANKINGS (moves vs. Week ${week - 1}) ===`);
-  const prev = week > 1 ? computePowerRankingsThroughWeek(season, week - 1).map(r => r.manager) : null;
-  computePowerRankingsThroughWeek(season, week).forEach((r, i) => {
-    const d = prev ? prev.indexOf(r.manager) - i : 0;
-    console.log(`  ${String(i + 1).padStart(2)}. ${r.manager.padEnd(16)} ${recordStr(r.wins, r.losses, r.ties).padEnd(6)} PF ${r.ptsFor.toFixed(1)}  ${!prev ? '' : d > 0 ? '▲' + d : d < 0 ? '▼' + (-d) : '—'}`);
-  });
+  const now = dash.computePowerRankingsThroughWeek(season, week);
+  if (!now) {
+    console.log('  (not available for this week -- playoff weeks, or a regular-season week missing from games.json)');
+  } else {
+    const prevRows = week > 1 ? dash.computePowerRankingsThroughWeek(season, week - 1) : null;
+    const prev = prevRows ? prevRows.map(r => r.manager) : null;
+    now.forEach((r, i) => {
+      const d = prev ? prev.indexOf(r.manager) - i : 0;
+      console.log(`  ${String(i + 1).padStart(2)}. ${r.manager.padEnd(16)} ${dash.recordStr(r.wins, r.losses, r.ties).padEnd(6)} PF ${r.ptsFor.toFixed(1)}  ${!prev ? '' : d > 0 ? '▲' + d : d < 0 ? '▼' + (-d) : '—'}`);
+    });
+  }
 
-  console.log(`\n=== MATCHUP LINES, REPLAYED (H2H before Week ${week}) ===`);
-  GAMES = ALL_GAMES.filter(g => g.season < season || g.week < week);
-  const out = {};
-  global.document = { querySelector: s => (out[s.match(/\d+/)[0]] = out[s.match(/\d+/)[0]] || {}), getElementById: () => ({ style: {} }) };
-  await renderMatchupLines(week, pairs, mgr);
+  const savedAll = fs.existsSync('data/lines.json') ? JSON.parse(fs.readFileSync('data/lines.json')) : {};
+  const snap = savedAll[season] && savedAll[season][week];
+  let lines;
+  if (snap) {
+    console.log(`\n=== MATCHUP LINES: SAVED BEFORE KICKOFF (${snap.takenAt}, ${snap.note}) -- quote these exactly ===`);
+    lines = snap.games;
+  } else {
+    console.log(`\n=== MATCHUP LINES, REPLAYED (no saved snapshot; current projections, H2H before Week ${week}) ===`);
+    dash.GAMES = ALL_GAMES.filter(g => g.season < season || g.week < week);
+    lines = await dash.computeMatchupLines(week, pairs, mgr);
+    dash.GAMES = ALL_GAMES;
+  }
   let favWins = 0;
-  pairs.forEach(([a, b], i) => {
-    const line = (out[i].innerHTML || '').replace(/<[^>]+>/g, '');
-    const fav = (line.match(/Line: (.+?) −/) || [])[1];
-    const winner = a.points > b.points ? mgr[a.roster_id] : mgr[b.roster_id];
-    if (fav === winner) favWins++;
-    console.log(`  ${mgr[a.roster_id]} ${a.points.toFixed(2)}-${b.points.toFixed(2)} ${mgr[b.roster_id]} | ${line}${fav && fav !== winner ? '  <-- UPSET' : ''}`);
+  pairs.forEach(([a, b]) => {
+    const A = mgr[a.roster_id], B = mgr[b.roster_id];
+    const l = lines.find(x => (x.mA === A && x.mB === B) || (x.mA === B && x.mB === A));
+    const winner = a.points > b.points ? A : B;
+    if (l && l.favourite === winner) favWins++;
+    const text = l ? `${l.favourite ? `${l.favourite} −${l.spread}` : 'Pick’em'} · Win ${l.mA} ${l.winA}% / ${l.mB} ${l.winB}% · O/U ${l.total}` : '(no line)';
+    console.log(`  ${A} ${a.points.toFixed(2)}-${b.points.toFixed(2)} ${B} | ${text}${l && l.favourite && l.favourite !== winner ? '  <-- UPSET' : ''}`);
   });
   console.log(`  favourites won ${favWins} of ${pairs.length}`);
 
