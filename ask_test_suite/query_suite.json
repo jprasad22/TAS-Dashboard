@@ -1772,5 +1772,79 @@
       "expect": "answer",
       "contains": "won the {LATEST_FINISHED_SEASON} championship"
     }
+  ],
+  "monthly_audit_2026_10": [
+    {
+      "q": "How many championships does Brad Harnum have?",
+      "expect": "answer",
+      "contains": "tied #1",
+      "not_contains": "#2"
+    },
+    {
+      "q": "how many playoff wins does Mac have",
+      "expect": "answer",
+      "contains": "level with Jerome Prasad"
+    },
+    {
+      "q": "Will Ben make the playoffs this year?",
+      "expect": "null"
+    },
+    {
+      "q": "is Jerome going to make the playoffs",
+      "expect": "null"
+    },
+    {
+      "q": "What was Jazz's bench score in week 5?",
+      "expect": "null"
+    },
+    {
+      "q": "Which waiver pickups did Romie make?",
+      "expect": "null"
+    },
+    {
+      "q": "who made the most FAAB bids",
+      "expect": "null"
+    },
+    {
+      "q": "Who kept Bijan Robinson this year?",
+      "expect": "answer",
+      "contains": "Nobody kept Bijan Robinson in 2026",
+      "not_contains": "2023"
+    },
+    {
+      "q": "Who kept Josh Allen in 2026",
+      "expect": "answer",
+      "contains": "Mac James"
+    },
+    {
+      "q": "Who went first overall in the 2022 draft?",
+      "expect": "answer",
+      "contains": "Jonathan Taylor"
+    },
+    {
+      "q": "Who has lost the most regular season games ever?",
+      "expect": "answer",
+      "contains": "Most career losses"
+    },
+    {
+      "q": "Lowest score of the 2023 season",
+      "expect": "answer",
+      "contains": "56.34"
+    },
+    {
+      "q": "Who lost the 2020 final?",
+      "expect": "answer",
+      "contains": "Mac James"
+    },
+    {
+      "q": "when will the draft be",
+      "expect": "answer",
+      "contains": "draft"
+    },
+    {
+      "q": "Until when can we make trades this season?",
+      "expect": "answer",
+      "contains": "rade deadline"
+    }
   ]
 }
