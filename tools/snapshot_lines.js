@@ -7,8 +7,10 @@
 //
 // Run from the repo root. Uses the page's own computeMatchupLines(), with Sleeper's current
 // projections and lineups. Refuses to save once the main Sunday slate has started (Sunday 1:00 PM
-// Eastern or later, or Monday) -- a "pre-game" line taken after kickoff would be misleading -- and
-// won't overwrite an existing snapshot without --force. Scheduled to run Sunday mornings.
+// Eastern or later, through Wednesday -- Sleeper can still report the finished week then, e.g. when
+// the app was closed Sunday and the scheduled run catches up on Tuesday) -- a "pre-game" line taken
+// after kickoff would be misleading -- and won't overwrite an existing snapshot without --force.
+// Scheduled to run Sunday mornings.
 const fs = require('fs');
 const { loadDashboard } = require('./lib/dashboard');
 
@@ -28,8 +30,8 @@ const dash = loadDashboard({
   if (state.season_type !== 'regular' && !opt('--week')) { console.error(`NFL season type is "${state.season_type}" -- nothing to snapshot`); process.exit(1); }
 
   const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Toronto' }));
-  const day = et.getDay(); // 0 = Sunday, 1 = Monday
-  if (week === state.week && ((day === 0 && et.getHours() >= 13) || day === 1) && !force) {
+  const day = et.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday
+  if (week === state.week && ((day === 0 && et.getHours() >= 13) || (day >= 1 && day <= 3)) && !force) {
     console.error('Too late: the main Sunday games have started, so this would not be a pre-game line. Nothing saved.');
     process.exit(1);
   }

@@ -100,15 +100,15 @@ async function playersDb() {
   pairs.forEach(([a, b]) => {
     const A = mgr[a.roster_id], B = mgr[b.roster_id];
     const l = lines.find(x => (x.mA === A && x.mB === B) || (x.mA === B && x.mB === A));
-    const winner = a.points > b.points ? A : B;
+    const winner = a.points > b.points ? A : b.points > a.points ? B : null; // null = a tie
     if (l && l.favourite === winner) favWins++;
     const text = l ? `${l.favourite ? `${l.favourite} −${l.spread}` : 'Pick’em'} · Win ${l.mA} ${l.winA}% / ${l.mB} ${l.winB}% · O/U ${l.total}` : '(no line)';
-    console.log(`  ${A} ${a.points.toFixed(2)}-${b.points.toFixed(2)} ${B} | ${text}${l && l.favourite && l.favourite !== winner ? '  <-- UPSET' : ''}`);
+    console.log(`  ${A} ${a.points.toFixed(2)}-${b.points.toFixed(2)} ${B} | ${text}${!winner ? '  <-- TIE' : l && l.favourite && l.favourite !== winner ? '  <-- UPSET' : ''}`);
   });
   console.log(`  favourites won ${favWins} of ${pairs.length}`);
 
-  const scores = ALL_GAMES.filter(g => g.season === season).flatMap(g => [[g.sA, g.mA, g.week], [g.sB, g.mB, g.week]]).sort((a, b) => b[0] - a[0]);
-  console.log(`\n=== ${season} SEASON CONTEXT ===`);
+  const scores = ALL_GAMES.filter(g => g.season === season && g.week <= week).flatMap(g => [[g.sA, g.mA, g.week], [g.sB, g.mB, g.week]]).sort((a, b) => b[0] - a[0]);
+  console.log(`\n=== ${season} SEASON CONTEXT (through Week ${week}) ===`);
   console.log(`  highest scores so far: ${scores.slice(0, 3).map(([s, m, w]) => `${s} ${m} (Wk ${w})`).join(', ')}`);
   console.log(`  lowest scores so far:  ${scores.slice(-3).reverse().map(([s, m, w]) => `${s} ${m} (Wk ${w})`).join(', ')}`);
 })().catch(e => { console.error(e.message); process.exit(1); });
