@@ -1846,5 +1846,28 @@
       "expect": "answer",
       "contains": "rade deadline"
     }
+  ],
+  "pick_compliance": [
+    {
+      "q": "is everyone compliant with the pick rules",
+      "expect": "answer",
+      "contains": "Pick Compliance tab"
+    },
+    {
+      "q": "which picks have been traded",
+      "expect": "answer",
+      "contains": "Pick Compliance tab"
+    },
+    {
+      "q": "can I trade draft picks",
+      "expect": "answer",
+      "contains": "pick-for-pick",
+      "not_contains": "dues"
+    },
+    {
+      "q": "pick for pick rule",
+      "expect": "answer",
+      "not_contains": "upfront"
+    }
   ]
 }
