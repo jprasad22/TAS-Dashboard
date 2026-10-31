@@ -766,6 +766,7 @@
     <button class="tab-btn" data-tab="stats">Stats</button>
     <button class="tab-btn" data-tab="rosters">Rosters &amp; Draft</button>
     <button class="tab-btn" data-tab="trade">Trade Analyzer</button>
+    <button class="tab-btn" data-tab="picks">Pick Compliance</button>
     <button class="tab-btn" data-tab="settings">League Settings</button>
     <button class="tab-btn" data-tab="ask">Ask</button>
   </div>
@@ -1282,9 +1283,9 @@
         <li>Player values come live from <b>FantasyCalc</b>, a third-party crowd-sourced site — not official, not gospel, just a reference point.</li>
         <li>Draft pick values are a rough internal estimate, not from FantasyCalc.</li>
         <li>If the live fetch fails, this falls back to a plain trade builder with no value estimate.</li>
-        <li><b>2026 Draft Pick Rules:</b> only 2027 picks are tradable (not current-year), pick-for-pick, max 2 Rounds 1–5 picks per future draft, fee paid upfront — see League Settings for the full rules.</li>
-        <li><b>Checked automatically</b> by the compliance reminder below: the year restriction, pick-for-pick, and the Rounds 1–5 limit.</li>
-        <li><b>Not checked</b> — confirm these manually: the Rounds 1–5 limit only sees picks in the trade you're building right now, not prior trades made outside this tool; fee-paid-upfront and no-side-deals can't be verified by software at all.</li>
+        <li><b>2026 Draft Pick Rules:</b> only 2027 picks are tradable (not current-year), pick-for-pick (same number of picks each way; players are fine), every team keeps at least 2 Rounds 1–5 picks — see League Settings for the full rules.</li>
+        <li><b>Checked automatically</b> by the compliance reminder below: the year restriction and pick-for-pick.</li>
+        <li><b>Not checked</b> — confirm these manually: the 2-pick minimum in Rounds 1–5 (the Pick Compliance tab shows what each team holds); no-side-deals can't be verified by software at all.</li>
       </ul>
     </div>
 
@@ -1364,6 +1365,31 @@
   <div id="settingsTab" class="tab-panel" style="display:none;">
     <div id="settingsAccordion"></div>
     <footer>League Settings · update this tab any time the rules change</footer>
+  </div>
+
+  <div id="picksTab" class="tab-panel" style="display:none;">
+    <div class="ask-disclaimer">
+      <ul>
+        <li>Every completed trade involving a draft pick, checked against the Draft Pick Rules in League Settings. Live from Sleeper, so a new trade appears here on its own.</li>
+        <li><b>Checked:</b> only next year's picks traded, pick-for-pick (the same number of picks each way, so every team keeps the same total; players are fine), and every team holding at least 2 picks in Rounds 1&ndash;5.</li>
+        <li><b>Not checked:</b> no side deals &mdash; software can't see what isn't in the trade. The Committee has the final say on all of it.</li>
+      </ul>
+    </div>
+    <div class="table-card" style="overflow-x:auto;margin-bottom:16px;">
+      <div class="table-head">
+        <h2 id="picksTitle">Pick Compliance</h2>
+        <div class="hint" id="picksSummary">Loading trades from Sleeper...</div>
+      </div>
+      <table id="picksTeamTable"></table>
+    </div>
+    <div class="table-card" style="overflow-x:auto;">
+      <div class="table-head">
+        <h2>Trades With Picks</h2>
+        <div class="hint">newest first · live from Sleeper</div>
+      </div>
+      <table id="picksTradeTable"></table>
+    </div>
+    <footer>Rounds 1&ndash;5 held counts every pick a team owns, its own or one it acquired.</footer>
   </div>
 
   <div id="recapTab" class="tab-panel" style="display:none;">
@@ -1550,12 +1576,12 @@ const CURRENT_SEASON = {
 const LEAGUE_SETTINGS = {
   scoring: "<div class=\"settings-subhead\">Passing</div>\n<ul>\n<li><b>1 point</b> per 25 passing yards</li>\n<li><b>4 points</b> per passing touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n<li><b>-2 points</b> per interception thrown</li>\n</ul>\n<div class=\"settings-subhead\">Rushing</div>\n<ul>\n<li><b>1 point</b> per 10 rushing yards</li>\n<li><b>6 points</b> per rushing touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n</ul>\n<div class=\"settings-subhead\">Receiving</div>\n<ul>\n<li><b>1 point</b> per reception (full PPR)</li>\n<li><b>1 point</b> per 10 receiving yards</li>\n<li><b>6 points</b> per receiving touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n</ul>\n<div class=\"settings-subhead\">Kicking</div>\n<ul>\n<li><b>3 points</b> per field goal made, 0&ndash;39 yards</li>\n<li><b>4 points</b> per field goal made, 40&ndash;49 yards</li>\n<li><b>5 points</b> per field goal made, 50&ndash;59 yards</li>\n<li><b>6 points</b> per field goal made, 60+ yards</li>\n<li><b>1 point</b> per extra point (PAT) made</li>\n<li>No penalty for missed kicks</li>\n</ul>\n<div class=\"settings-subhead\">Team Defense / Special Teams</div>\n<ul>\n<li><b>6 points</b> per defensive or special teams touchdown</li>\n<li><b>1 point</b> per sack</li>\n<li><b>2 points</b> per interception</li>\n<li><b>2 points</b> per fumble recovery</li>\n<li><b>2 points</b> per safety</li>\n<li><b>1 point</b> per special teams forced fumble</li>\n<li><b>1 point</b> per special teams fumble recovery</li>\n</ul>\n<div class=\"settings-subhead\">Points Allowed (Team Defense)</div>\n<ul>\n<li><b>10 points</b> &mdash; shutout (0 points allowed)</li>\n<li><b>7 points</b> &mdash; 1&ndash;6 points allowed</li>\n<li><b>4 points</b> &mdash; 7&ndash;13 points allowed</li>\n<li><b>1 point</b> &mdash; 14&ndash;20 points allowed</li>\n<li><b>0 points</b> &mdash; 21&ndash;27 points allowed</li>\n<li><b>-1 point</b> &mdash; 28&ndash;34 points allowed</li>\n<li><b>-4 points</b> &mdash; 35+ points allowed</li>\n</ul>\n<div class=\"settings-subhead\">Misc</div>\n<ul>\n<li><b>-2 points</b> per fumble lost</li>\n<li><b>6 points</b> per fumble recovery touchdown</li>\n</ul>",
   keeper: "<div class=\"settings-subhead\">Draft Round Cost</div>\n<ul>\n<li>Each keeper costs the draft pick from the round they were originally drafted in the previous season.</li>\n</ul>\n<div class=\"settings-subhead\">Repeated Keeper Rule</div>\n<ul>\n<li>If a player is kept for a second consecutive year (or more), their draft round cost moves up one round earlier each additional year.</li>\n<li>Example: Drafted in Round 8 &rarr; Year 1 keeper cost = Round 8 &rarr; Year 2 keeper cost = Round 7 &rarr; Year 3 keeper cost = Round 6.</li>\n</ul>\n<div class=\"settings-subhead\">Undrafted / Waiver Players</div>\n<ul>\n<li>If a keeper was originally undrafted (added from waivers), they are assigned a 9th-round cost in the first year they are kept.</li>\n</ul>\n<div class=\"settings-subhead\">Maximum Keeper Duration</div>\n<ul>\n<li>You may keep the same player for a maximum of 3 consecutive years (including the original year you first keep them). After that, they must re-enter the draft.</li>\n</ul>\n<div class=\"settings-subhead\">Round 1 Restrictions</div>\n<ul>\n<li>Players drafted in Round 1 cannot be kept under any circumstances.</li>\n<li>Players whose keeper cost would advance into Round 1 in a future season are also ineligible to be kept in the year before they would reach Round 1.</li>\n</ul>\n<div class=\"settings-subhead\">Traded Players</div>\n<ul>\n<li>All keeper rules and costs apply equally to traded players. A traded player&rsquo;s draft round cost and keeper eligibility continue from their original status and history, regardless of which team owns them.</li>\n</ul>\n<div class=\"settings-subhead\">Keeper Limit</div>\n<ul>\n<li>Each team may keep only 1 player per season.</li>\n</ul>\n<div class=\"settings-subhead\">Late-Round Draft Rule</div>\n<ul>\n<li>Any player drafted after Round 9 is defaulted to a Round 9 keeper cost in their first keeper year (same as an undrafted/waiver pickup).</li>\n</ul>",
-  draftPickRules: "<div class=\"settings-subhead\">Tradable Picks (New for 2026)</div>\n<ul>\n<li>Draft picks may now be traded between managers.</li>\n<li><b>Only 2027 picks are tradable right now.</b> Current-year (2026) picks cannot be traded at all, and nothing beyond 2027 is allowed either \u2014 a strict 1-year lookahead, not this season plus next.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Requirements</div>\n<ul>\n<li>Pick trades must be <b>pick-for-pick</b> \u2014 picks cannot be packaged with players or cash in the same trade.</li>\n<li>Trading a future pick requires that manager's <b>next season's league dues ($175) be paid upfront</b> before the trade is approved.</li>\n<li><b>No side deals:</b> all compensation for a pick trade must be spelled out explicitly within the trade itself \u2014 no off-the-books agreements.</li>\n</ul>\n<div class=\"settings-subhead\">Restrictions</div>\n<ul>\n<li>Maximum <b>2 picks from Rounds 1\u20135</b> may be traded away per future draft, per team.</li>\n</ul>",
+  draftPickRules: "<div class=\"settings-subhead\">Tradable Picks (New for 2026)</div>\n<ul>\n<li>Draft picks may now be traded between managers.</li>\n<li><b>Only 2027 picks are tradable right now.</b> Current-year (2026) picks cannot be traded at all, and nothing beyond 2027 is allowed either \u2014 a strict 1-year lookahead, not this season plus next.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Requirements</div>\n<ul>\n<li>Pick trades must be <b>pick-for-pick</b> \u2014 the same number of picks must go each way, so every team has the same total number of picks at draft time. Players can be part of the trade.</li>\n<li><b>No side deals:</b> all compensation for a pick trade must be spelled out explicitly within the trade itself \u2014 no off-the-books agreements.</li>\n</ul>\n<div class=\"settings-subhead\">Restrictions</div>\n<ul>\n<li>Every team must hold at least <b>2 picks in Rounds 1\u20135</b> of each future draft. They don\u2019t have to be the team\u2019s own picks.</li>\n</ul>",
   draftRules: "<div class=\"settings-subhead\">Draft Format</div>\n<ul>\n<li>Draft type: <b>Snake</b></li>\n<li>Time per pick: <b>60 seconds</b></li>\n</ul>\n<div class=\"settings-subhead\">Automation</div>\n<ul>\n<li><b>Autostart:</b> the draft automatically begins at the scheduled start time.</li>\n<li><b>CPU Auto Pick:</b> enabled &mdash; if a manager runs out of time on their pick, the system auto-picks for them.</li>\n</ul>",
 
   roster: "<div class=\"settings-subhead\">Starting Lineup</div>\n<ul>\n<li><b>1</b> Quarterback (QB)</li>\n<li><b>2</b> Running Back (RB)</li>\n<li><b>2</b> Wide Receiver (WR)</li>\n<li><b>1</b> Tight End (TE)</li>\n<li><b>2</b> Flex (WR/RB/TE)</li>\n<li><b>1</b> Kicker (K)</li>\n<li><b>1</b> Defense (DEF)</li>\n</ul>\n<div class=\"settings-subhead\">Bench</div>\n<ul>\n<li><b>5</b> bench spots</li>\n</ul>\n<div class=\"settings-subhead\">Injured Reserve (IR)</div>\n<ul>\n<li><b>1</b> IR slot</li>\n<li>OUT players allowed on IR</li>\n<li>Suspended players allowed on IR</li>\n<li>NA, DNR/Holdout/Opt-out, and Doubtful players are <b>not</b> allowed on IR</li>\n</ul>",
   general: "<div class=\"settings-subhead\">League Format</div>\n<ul>\n<li>League type: <b>Keeper</b></li>\n<li><b>12</b> teams</li>\n<li>Keeper decisions due <b>1 week (7 days)</b> before the draft</li>\n</ul>\n<div class=\"settings-subhead\">Waivers</div>\n<ul>\n<li>Waiver type: <b>FAAB</b> (Free Agent Auction Budget) bidding</li>\n<li><b>$100</b> FAAB budget per season</li>\n<li>Dropped players stay on waivers for <b>1 day</b> before clearing to free agency</li>\n<li>Waivers process daily; final weekly clear is <b>Wednesdays at 3:00 AM EDT</b></li>\n</ul>\n<div class=\"settings-subhead\">Trades</div>\n<ul>\n<li><b>1-day</b> review period on pending trades</li>\n<li>Trade deadline: <b>Week 11</b></li>\n<li>Draft pick trading is <b>allowed</b></li>\n</ul>\n<div class=\"settings-subhead\">Playoffs</div>\n<ul>\n<li>Playoffs start <b>Week 15</b></li>\n<li><b>8</b> teams make the playoffs</li>\n<li>One week per playoff round</li>\n<li>Seeding: set by regular-season record; ties broken first by total points scored, then by total points scored against</li>\n<li>Non-playoff teams play in a separate <b>Consolation bracket</b></li>\n</ul>\n<div class=\"settings-subhead\">Transaction Rules</div>\n<ul>\n<li>Roster moves are <b>locked</b> until after the draft</li>\n<li>Bench players <b>can&rsquo;t be dropped</b> once their game has started</li>\n</ul>\n<div class=\"settings-subhead\">Competitive Lineup Rule (New for 2026)</div>\n<ul>\n<li>Each manager must submit their <b>highest-scoring reasonable lineup</b> every week.</li>\n<li>If a bench player is eligible for an empty starting spot, they <b>must be started</b>.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Review Committee (New for 2026)</div>\n<ul>\n<li>A 4-person committee reviews trades, but may only overturn one for <b>collusion</b>, a <b>deliberate tanking arrangement</b>, or a <b>rule violation</b> \u2014 not simple fairness disagreements.</li>\n<li>If a trade involves a Committee member, the other <b>3 Committee members</b> review it instead.</li>\n</ul>\n<div class=\"settings-subhead\">Toilet Bowl Punishment (New for 2026 \u2014 TBD)</div>\n<ul>\n<li>Not yet decided. The Committee will present punishment options for the league to vote on before the draft.</li>\n<li>Intent: a known consequence to reduce incentive for intentional losing.</li>\n</ul>",
-  goodToKnow: "<ul>\n<li><b>The Ask tab isn&rsquo;t AI</b> &mdash; it&rsquo;s a lookup tool that recognizes known question patterns (manager names, years, stats, rules). If it doesn&rsquo;t understand something, it says so rather than guessing.</li>\n<li><b>Live data</b> (this week&rsquo;s standings and scoreboard, the NFL ticker, and 2026+ draft results) is pulled live from Sleeper (and ESPN for the NFL ticker). If their systems are slow or briefly wrong, this dashboard will reflect that.</li>\n<li><b>Standings ties stay ties, on purpose.</b> If two teams are tied on both wins and points, they&rsquo;ll show at the same rank &mdash; not resolved by points against. Same logic as a regular-season NFL game itself being allowed to end in a tie.</li>\n<li><b>The NFL ticker uses an unofficial, undocumented ESPN source.</b> It could stop working without warning &mdash; that&rsquo;s a limitation of the source, not necessarily something broken here.</li>\n<li><b>The Trade Analyzer&rsquo;s compliance checker</b> automatically checks the year rule, pick-for-pick, and the Rounds 1&ndash;5 limit &mdash; but only for the trade being built right now, not any prior trades made outside this tool. It can&rsquo;t verify fee-paid-upfront or no-side-deals at all &mdash; confirm those manually.</li>\n<li><b>Player and pick trade values</b> come from FantasyCalc, a third-party crowd-sourced site &mdash; a reference point, not an official or binding valuation.</li>\n<li><b>2012&ndash;2025 seasons are fully validated, start to finish, including playoffs.</b> 2026 is being added week by week as it's actually played &mdash; Stats, Head-to-Head, and Power Rankings for 2026 reflect completed weeks only, and won't have a final standings/champion until the season (playoffs included) actually finishes.</li>\n</ul>",
+  goodToKnow: "<ul>\n<li><b>The Ask tab isn&rsquo;t AI</b> &mdash; it&rsquo;s a lookup tool that recognizes known question patterns (manager names, years, stats, rules). If it doesn&rsquo;t understand something, it says so rather than guessing.</li>\n<li><b>Live data</b> (this week&rsquo;s standings and scoreboard, the NFL ticker, and 2026+ draft results) is pulled live from Sleeper (and ESPN for the NFL ticker). If their systems are slow or briefly wrong, this dashboard will reflect that.</li>\n<li><b>Standings ties stay ties, on purpose.</b> If two teams are tied on both wins and points, they&rsquo;ll show at the same rank &mdash; not resolved by points against. Same logic as a regular-season NFL game itself being allowed to end in a tie.</li>\n<li><b>The NFL ticker uses an unofficial, undocumented ESPN source.</b> It could stop working without warning &mdash; that&rsquo;s a limitation of the source, not necessarily something broken here.</li>\n<li><b>The Trade Analyzer&rsquo;s compliance checker</b> automatically checks the year rule and pick-for-pick for the trade being built right now; the Pick Compliance tab tracks every completed trade and what each team holds. It can&rsquo;t verify no-side-deals at all &mdash; confirm that manually.</li>\n<li><b>Player and pick trade values</b> come from FantasyCalc, a third-party crowd-sourced site &mdash; a reference point, not an official or binding valuation.</li>\n<li><b>2012&ndash;2025 seasons are fully validated, start to finish, including playoffs.</b> 2026 is being added week by week as it's actually played &mdash; Stats, Head-to-Head, and Power Rankings for 2026 reflect completed weeks only, and won't have a final standings/champion until the season (playoffs included) actually finishes.</li>\n</ul>",
 };
 
 const managerColor = {};
@@ -1570,7 +1596,7 @@ document.getElementById('seasonNumberLabel').textContent = `SEASON #${CURRENT_SE
 // "Last updated" = when this file was last changed, not page-load time. Update BUILD_DATE with
 // every change to this file. Date only, no time of day (a guessed clock time was wrong before),
 // and use the Eastern-time date -- a UTC clock shows tomorrow's date after 8 PM Eastern.
-const BUILD_DATE = "2026-10-20";
+const BUILD_DATE = "2026-10-31";
 document.getElementById('lastRefreshed').textContent = 'Last updated ' + new Date(BUILD_DATE + 'T12:00:00').toLocaleDateString('en-US', {
   month: 'short', day: 'numeric', year: 'numeric',
 });
@@ -2624,6 +2650,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('currentSeasonTab').style.display = tab === 'current' ? '' : 'none';
     document.getElementById('settingsTab').style.display = tab === 'settings' ? '' : 'none';
     document.getElementById('tradeTab').style.display = tab === 'trade' ? '' : 'none';
+    document.getElementById('picksTab').style.display = tab === 'picks' ? '' : 'none';
     document.getElementById('recapTab').style.display = tab === 'recap' ? '' : 'none';
     document.getElementById('askTab').style.display = tab === 'ask' ? '' : 'none';
     document.getElementById('rostersTab').style.display = tab === 'rosters' ? '' : 'none';
@@ -4610,6 +4637,9 @@ function askAnswer(raw) {
   }
 
   // ---- Where things live
+  if (/\bpick compliance\b|\bcompliant\b|\bpick limit\b|\btraded picks\b|\bpicks? (have|has|been|were|was) (been )?traded\b/.test(lower)) {
+    return `Traded picks and each team's status against the Draft Pick Rules are in the Pick Compliance tab, live from Sleeper.`;
+  }
   if (/\b(weekly )?recaps?\b|\btelegraph\b/.test(lower) && !mgrs.length) {
     return `The Tobermory Telegraph lives in the Weekly Recap tab -- the newest week shows first, and the season and week selectors go back to the Draft Recap.`;
   }
@@ -5064,6 +5094,88 @@ async function fetchSleeperJson(path) {
   return res.json();
 }
 
+// ---------- Pick Compliance ----------
+const PICK_MIN_EARLY = 2, PICK_EARLY_ROUND = 5;
+
+// Pure: everything the Pick Compliance tab shows, from Sleeper's transactions and traded_picks.
+// nameOf maps roster_id to manager; tradable is the one draft year picks may be traded for.
+function computePickCompliance(transactions, tradedPicks, nameOf, tradable, rounds) {
+  const trades = transactions.filter(t => t.type === 'trade' && t.status === 'complete' && (t.draft_picks || []).length)
+    .sort((a, b) => a.created - b.created).map(t => {
+      const picks = t.draft_picks.map(p => ({ season: Number(p.season), round: p.round, original: nameOf[p.roster_id], from: nameOf[p.previous_owner_id], to: nameOf[p.owner_id] }));
+      const players = Object.keys(t.adds || {}).length;
+      const faab = (t.waiver_budget || []).reduce((n, w) => n + (w.amount || 0), 0);
+      const wrongYear = picks.filter(p => p.season !== tradable);
+      const teams = t.roster_ids.map(r => nameOf[r]);
+      const uneven = teams.some(m => picks.filter(p => p.from === m).length !== picks.filter(p => p.to === m).length);
+      return { created: t.created, teams, picks, players, faab, wrongYear, uneven };
+    });
+  const owner = {};
+  tradedPicks.filter(p => Number(p.season) === tradable).forEach(p => { owner[`${p.roster_id}|${p.round}`] = p.owner_id; });
+  const teams = Object.keys(nameOf).map(Number).map(rid => {
+    const manager = nameOf[rid];
+    const sent = trades.flatMap(t => t.picks.filter(p => p.from === manager));
+    const held = [];
+    Object.keys(nameOf).map(Number).forEach(orig => {
+      for (let round = 1; round <= rounds; round++) {
+        if ((owner[`${orig}|${round}`] ?? orig) === rid) held.push({ round, original: nameOf[orig] });
+      }
+    });
+    const mine = trades.filter(t => t.teams.includes(manager));
+    const issues = [];
+    const early = held.filter(p => p.round <= PICK_EARLY_ROUND).length;
+    if (early < PICK_MIN_EARLY) issues.push(`only ${early} Rounds 1–${PICK_EARLY_ROUND} pick${early === 1 ? '' : 's'} held (minimum ${PICK_MIN_EARLY})`);
+    if (held.length !== rounds) issues.push(`${held.length} total picks (should be ${rounds})`);
+    const uneven = mine.filter(t => t.uneven).length;
+    if (uneven) issues.push(`${uneven} trade${uneven === 1 ? '' : 's'} not pick-for-pick`);
+    if (mine.some(t => t.wrongYear.length)) issues.push(`a pick from a year that isn't tradable`);
+    return { manager, sent, early, total: held.length, acquired: held.filter(p => p.original !== manager), issues };
+  }).sort((a, b) => b.issues.length - a.issues.length || a.early - b.early || a.manager.localeCompare(b.manager));
+  return { trades, teams, tradable };
+}
+
+function pickLabel(p, owner) {
+  return `R${p.round}${p.original === owner ? '' : ` (${p.original.split(' ')[0]})`}`;
+}
+
+function renderPickCompliance(c) {
+  document.getElementById('picksTitle').textContent = `Pick Compliance — ${c.tradable} Draft`;
+  const flagged = c.teams.filter(t => t.issues.length).length;
+  document.getElementById('picksSummary').textContent = `${c.trades.length} trade${c.trades.length === 1 ? '' : 's'} involving picks · ` +
+    `${c.teams.length - flagged} of ${c.teams.length} teams compliant · every team must hold at least ${PICK_MIN_EARLY} picks in Rounds 1–${PICK_EARLY_ROUND}`;
+  const list = (rows, owner) => rows.length ? rows.map(p => pickLabel(p, owner)).join(', ') : '—';
+  document.getElementById('picksTeamTable').innerHTML = `<thead><tr><th>Manager</th><th>Total picks</th><th>Rounds 1–${PICK_EARLY_ROUND} held</th><th>Traded away</th><th>Acquired</th><th>Status</th></tr></thead><tbody>` +
+    c.teams.map(t => `<tr><td>${t.manager}</td><td>${t.total}</td><td class="${t.early < PICK_MIN_EARLY ? 'num-neg' : ''}">${t.early}</td>` +
+      `<td>${list(t.sent, t.manager)}</td><td>${list(t.acquired, t.manager)}</td>` +
+      `<td style="min-width:220px;" class="${t.issues.length ? 'num-neg' : 'num-pos'}">${t.issues.length ? t.issues.join('; ') : t.early === PICK_MIN_EARLY ? 'Compliant (at minimum)' : 'Compliant'}</td></tr>`).join('') + '</tbody>';
+  document.getElementById('picksTradeTable').innerHTML = `<thead><tr><th>Date</th><th>Teams</th><th>Picks</th><th>Also in the trade</th><th>Check</th></tr></thead><tbody>` +
+    (c.trades.length ? [...c.trades].reverse().map(t => {
+      const moves = t.picks.map(p => `${p.from.split(' ')[0]} sent ${pickLabel(p, p.from)}`).join('; ');
+      const extras = [t.players ? `${t.players} player${t.players === 1 ? '' : 's'}` : '', t.faab ? `$${t.faab} FAAB` : ''].filter(Boolean).join(', ') || '—';
+      const notes = [t.uneven ? 'Not pick-for-pick' : '', t.wrongYear.length ? `Includes a ${t.wrongYear[0].season} pick` : ''].filter(Boolean);
+      const date = new Date(t.created).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'America/Toronto' });
+      return `<tr><td>${date}</td><td>${t.teams.join(' / ')}</td><td>${moves}</td><td>${extras}</td><td class="${notes.length ? 'num-neg' : 'num-pos'}">${notes.join('; ') || 'OK'}</td></tr>`;
+    }).join('') : '<tr><td colspan="5">No trades involving picks yet.</td></tr>') + '</tbody>';
+}
+
+let pickComplianceLoaded = false;
+async function ensurePickCompliance() {
+  if (pickComplianceLoaded) return;
+  pickComplianceLoaded = true;
+  try {
+    const [users, rosters, tradedPicks, ...weeks] = await Promise.all(['users', 'rosters', 'traded_picks',
+      ...Array.from({ length: 19 }, (_, w) => `transactions/${w}`)].map(p => fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/${p}`)));
+    const uname = {}; users.forEach(u => { uname[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
+    const nameOf = {}; rosters.forEach(r => { nameOf[r.roster_id] = uname[r.owner_id]; });
+    const rounds = Math.max(...DRAFTS[Math.max(...Object.keys(DRAFTS).map(Number))].picks.map(p => p.round));
+    renderPickCompliance(computePickCompliance(weeks.flat(), tradedPicks, nameOf, CURRENT_SEASON.year + 1, rounds));
+  } catch (e) {
+    pickComplianceLoaded = false;
+    document.getElementById('picksSummary').textContent = "Couldn't load trades from Sleeper right now -- reopen this tab to try again.";
+  }
+}
+document.querySelector('.tab-btn[data-tab="picks"]').addEventListener('click', ensurePickCompliance);
+
 // ---------- Trade Analyzer ----------
 const tradeSides = { A: [], B: [] };
 let tradeValuesAvailable = false;
@@ -5165,32 +5277,20 @@ function renderCompliance() {
       violations.push(`This trade includes a ${wrongYear.join(', ')} pick. Only ${validYear} picks are tradable right now -- current-year (${CURRENT_SEASON.year}) picks can't be traded at all, and nothing beyond ${validYear} is allowed either.`);
     }
 
-    // Pick-for-pick: confirmed this only applies to future picks -- but since current-year picks
-    // aren't tradable at all (checked above), every legitimately tradable pick already IS a
-    // future pick, so this check simply applies whenever any pick is involved.
-    if (allItems.some(i => i.type === 'player')) {
-      violations.push(`Trades involving draft picks must be pick-for-pick -- this trade also includes at least one player.`);
+    // Pick-for-pick: the same number of picks each way, so every team keeps the same total at draft
+    // time. Players can be included.
+    const sentA = picks.filter(p => p.side === 'A').length, sentB = picks.filter(p => p.side === 'B').length;
+    if (sentA !== sentB) {
+      violations.push(`Trades involving draft picks must be pick-for-pick -- this one moves ${sentA} pick${sentA === 1 ? '' : 's'} one way and ${sentB} the other, so the teams would end up with different totals.`);
     }
 
-    // Max 2 picks from Rounds 1-5 per future draft, per team -- checked only within THIS trade.
-    // Real limitation, said here plainly rather than silently: this can't see prior trades built
-    // outside this tool, so it can't catch a team that already used up its limit elsewhere.
-    const byTeamYear = {};
-    picks.forEach(p => {
-      const key = p.side + '|' + p.year;
-      byTeamYear[key] = byTeamYear[key] || { side: p.side, year: p.year, count: 0 };
-      if (p.round <= 5) byTeamYear[key].count++;
-    });
-    Object.values(byTeamYear).forEach(g => {
-      if (g.count > 2) {
-        violations.push(`Side ${g.side} is sending ${g.count} Rounds 1-5 picks for ${g.year} in this trade -- max 2 per future draft. (This only checks picks in this trade; it can't see other trades that may have already used up that team's limit.)`);
-      }
-    });
+    // The 2-pick minimum in Rounds 1-5 depends on what each team holds, which this builder can't see.
+    if (picks.some(p => p.round <= 5)) {
+      warnings.push(`Every team must keep at least 2 picks in Rounds 1-5 -- the Pick Compliance tab shows what each team holds now.`);
+    }
 
-    // Fee-upfront and no-side-deals genuinely can't be checked by this tool -- one is an
-    // off-platform financial fact, the other is by definition about what isn't written down.
-    // No year-scoping needed anymore: every legitimately tradable pick is already a future pick.
-    warnings.push(`Can't be auto-checked: next season's ${CURRENT_SEASON.leagueFeeAmount} dues must be paid upfront before a future-pick trade is approved, and all compensation must be spelled out in the trade itself -- no side deals.`);
+    // No-side-deals genuinely can't be checked by this tool: it's about what isn't written down.
+    warnings.push(`Can't be auto-checked: all compensation must be spelled out in the trade itself -- no side deals.`);
   }
 
   if (violations.length || warnings.length) {
