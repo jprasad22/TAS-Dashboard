@@ -1869,5 +1869,137 @@
       "expect": "answer",
       "not_contains": "upfront"
     }
+  ],
+  "monthly_audit_2026_11": [
+    {
+      "q": "who did Stuart take first overall in 2026",
+      "expect": "answer",
+      "contains": "Christian McCaffrey",
+      "not_contains": "6-"
+    },
+    {
+      "q": "what is Stuart's first round pick in 2026",
+      "expect": "answer",
+      "contains": "Christian McCaffrey (RB, Round 1, Pick 3)"
+    },
+    {
+      "q": "Mike first overall 2026",
+      "expect": "answer",
+      "contains": "Jahmyr Gibbs",
+      "not_contains": "points for"
+    },
+    {
+      "q": "who did Stuart take in round 3 in 2026",
+      "expect": "answer",
+      "contains": "Kyren Williams"
+    },
+    {
+      "q": "will Brad beat Mac this week",
+      "expect": "null"
+    },
+    {
+      "q": "who wins Brad vs Mac",
+      "expect": "null"
+    },
+    {
+      "q": "will Jerome score 150",
+      "expect": "null"
+    },
+    {
+      "q": "who was picked up off waivers most",
+      "expect": "null"
+    },
+    {
+      "q": "who's on the waiver wire",
+      "expect": "null"
+    },
+    {
+      "q": "how do waivers work",
+      "expect": "answer",
+      "contains": "FAAB"
+    },
+    {
+      "q": "Mac James record",
+      "expect": "answer",
+      "contains": "Mac James's career regular-season record"
+    },
+    {
+      "q": "Mac's all time record",
+      "expect": "answer",
+      "contains": "career regular-season record"
+    },
+    {
+      "q": "Stuart Duncan career wins",
+      "expect": "answer",
+      "contains": "Stuart Duncan's career regular-season record"
+    },
+    {
+      "q": "Mac's record in 2024",
+      "expect": "answer",
+      "contains": "went 8-6"
+    },
+    {
+      "q": "Mac's record against Ben",
+      "expect": "answer",
+      "contains": "all-time against Ben Matsumoto"
+    },
+    {
+      "q": "lifetime series between Jerome and Mike",
+      "expect": "answer",
+      "contains": "all-time against Mike Gostlin"
+    },
+    {
+      "q": "who owns Gurminder head to head",
+      "expect": "answer",
+      "contains": "Best record against Gurminder Kambo"
+    },
+    {
+      "q": "who has beaten Stuart the most",
+      "expect": "answer",
+      "contains": "Best record against Stuart Duncan"
+    },
+    {
+      "q": "Gurminder's nemesis",
+      "expect": "answer",
+      "contains": "Best record against Gurminder Kambo"
+    },
+    {
+      "q": "longest run of wins for Jazz",
+      "expect": "answer",
+      "contains": "5 straight -- (2022, Weeks 3–7)"
+    },
+    {
+      "q": "Jazz's longest losing run",
+      "expect": "answer",
+      "contains": "losing streak"
+    },
+    {
+      "q": "how much is the buy in",
+      "expect": "answer",
+      "contains": "$175",
+      "not_contains": "TBD"
+    },
+    {
+      "q": "what's the league fee",
+      "expect": "answer",
+      "contains": "$175",
+      "not_contains": "TBD"
+    },
+    {
+      "q": "longest losing streak across seasons",
+      "expect": "answer",
+      "contains": "across seasons"
+    },
+    {
+      "q": "who drafted Bijan Robinson in 2026",
+      "expect": "answer",
+      "contains": "2026: Jazz Dhillon",
+      "not_contains": "2023"
+    },
+    {
+      "q": "who drafted Bijan Robinson in 2013",
+      "expect": "answer",
+      "contains": "wasn't drafted in 2013"
+    }
   ]
 }
