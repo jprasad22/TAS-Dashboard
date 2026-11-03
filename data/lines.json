@@ -71,6 +71,78 @@
      "total": 237.5
     }
    ]
+  },
+  "8": {
+   "takenAt": "2026-11-01T16:13:39.376Z",
+   "note": "after the early games, before the 1 PM games",
+   "games": [
+    {
+     "mA": "Jerome Prasad",
+     "mB": "Romie Jassal",
+     "favourite": "Jerome Prasad",
+     "spread": 34.5,
+     "winA": 87,
+     "winB": 13,
+     "oddsA": "−648",
+     "oddsB": "+648",
+     "total": 247.5
+    },
+    {
+     "mA": "Gurminder Kambo",
+     "mB": "Ian Singh",
+     "favourite": "Ian Singh",
+     "spread": 2.5,
+     "winA": 47,
+     "winB": 53,
+     "oddsA": "+112",
+     "oddsB": "−112",
+     "total": 241.5
+    },
+    {
+     "mA": "Mac James",
+     "mB": "Josh Dass",
+     "favourite": "Mac James",
+     "spread": 16.5,
+     "winA": 70,
+     "winB": 30,
+     "oddsA": "−236",
+     "oddsB": "+236",
+     "total": 242
+    },
+    {
+     "mA": "Ben Matsumoto",
+     "mB": "Jazz Dhillon",
+     "favourite": "Jazz Dhillon",
+     "spread": 4,
+     "winA": 45,
+     "winB": 55,
+     "oddsA": "+123",
+     "oddsB": "−123",
+     "total": 270
+    },
+    {
+     "mA": "Stuart Duncan",
+     "mB": "Lucas Blair",
+     "favourite": "Stuart Duncan",
+     "spread": 15,
+     "winA": 69,
+     "winB": 31,
+     "oddsA": "−218",
+     "oddsB": "+218",
+     "total": 222.5
+    },
+    {
+     "mA": "Mike Gostlin",
+     "mB": "Brad Harnum",
+     "favourite": "Brad Harnum",
+     "spread": 8,
+     "winA": 40,
+     "winB": 60,
+     "oddsA": "+152",
+     "oddsB": "−152",
+     "total": 282
+    }
+   ]
   }
  }
 }
