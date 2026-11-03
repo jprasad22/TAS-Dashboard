@@ -1596,7 +1596,7 @@ document.getElementById('seasonNumberLabel').textContent = `SEASON #${CURRENT_SE
 // "Last updated" = when this file was last changed, not page-load time. Update BUILD_DATE with
 // every change to this file. Date only, no time of day (a guessed clock time was wrong before),
 // and use the Eastern-time date -- a UTC clock shows tomorrow's date after 8 PM Eastern.
-const BUILD_DATE = "2026-10-31";
+const BUILD_DATE = "2026-11-03";
 document.getElementById('lastRefreshed').textContent = 'Last updated ' + new Date(BUILD_DATE + 'T12:00:00').toLocaleDateString('en-US', {
   month: 'short', day: 'numeric', year: 'numeric',
 });
@@ -4155,11 +4155,11 @@ function questionModifiers(lower) {
     // predictions, the Toilet Bowl. A team-score answer to these would be confidently wrong.
     noData: /\b(kickers?|quarterbacks?|qbs?|running backs?|rbs?|receivers?|wrs?|tight ends?|tes|defen[cs]es?|dst|players?)\b/.test(lower) &&
         /\b(game|games|week|weekly|matchup)\b|\bwk\s*\d/.test(lower) ||
-      /\bbench (points|pts|score|scores|scoring|total)\b|\b(waiver|faab|free.agent) (pickups?|claims?|adds?|moves?|bids?|acquisitions?)\b|\b(most|fewest|how many) (waiver|faab|free.agent)? ?(pickups|claims|moves|trades|transactions)\b|\bhow many trades\b|\bwill\b.*\b(score|win|make|miss|clinch|finish|end up)\b|\b(going to|gonna|predict(ion|ed)?)\b.*\b(score|win|make|miss|clinch|finish)\b|\bnext week\b|\btoilet bowl\b.*\b(won|win|winner|lost|loser)\b|\b(won|win|winner|lost|loser)\b.*\btoilet bowl\b/.test(lower),
+      /\bbench (points|pts|score|scores|scoring|total)\b|\b(waiver|faab|free.agent) (pickups?|claims?|adds?|moves?|bids?|acquisitions?)\b|\b(most|fewest|how many) (waiver|faab|free.agent)? ?(pickups|claims|moves|trades|transactions)\b|\bhow many trades\b|\bpicked up\b|\bwaiver wire\b|\bon waivers\b|\bwill\b.*\b(score|win|beat|lose|make|miss|clinch|finish|end up)\b|\b(going to|gonna|predict(ion|ed)?)\b.*\b(score|win|beat|lose|make|miss|clinch|finish)\b|\bwho wins\b(?!.*\b(most|more|usually|often)\b)|\bnext week\b|\btoilet bowl\b.*\b(won|win|winner|lost|loser)\b|\b(won|win|winner|lost|loser)\b.*\btoilet bowl\b/.test(lower),
     never: /\bnever\b|\b(has|have)n'?t (ever )?won\b|\bwithout (a |any )?(title|championship)\b/.test(lower),
     drought: /\bdrought\b|\blongest (time )?without\b/.test(lower),
-    losing: /\blos(ing|s) streak\b|\blosses in a row\b|\bstraight losses\b|\bskid\b/.test(lower),
-    streak: /\bstreaks?\b|\bin a row\b|\bstraight (wins|losses)\b|\bskid\b/.test(lower),
+    losing: /\blos(ing|s) (streak|run)\b|\blosses in a row\b|\bstraight losses\b|\bskid\b|\brun of losses\b/.test(lower),
+    streak: /\bstreaks?\b|\bin a row\b|\bstraight (wins|losses)\b|\bskid\b|\b(winning|losing) run\b|\brun of (wins|losses)\b/.test(lower),
     playoffs: /\bplayoffs?\b|\bpost.?season\b/.test(lower),
     regular: /\bregular.season\b/.test(lower),
     week: wk ? Number(wk[1]) : null,
@@ -4317,11 +4317,13 @@ function askAnswer(raw) {
       return gs.length ? `${mgrs[0]}'s current ${losing ? 'losing' : 'winning'} streak: ${n} game${n === 1 ? '' : 's'} (${CURRENT_SEASON.year}, through Week ${gs[gs.length - 1].week}).`
         : `${mgrs[0]} hasn't played a ${CURRENT_SEASON.year} game yet.`;
     }
+    // Within a season by default (as on the Head-to-Head tab); "across seasons" lets a run carry over.
+    const across = !yr && /\bacross (seasons|years)\b|\bspanning\b|\bcarr(y|ies|ied|ying) over\b/.test(lower);
     let best = [];
     (mgrs.length ? mgrs : managers).forEach(m => {
       let run = 0, start = null, season = null;
       gamesOf(m).forEach(r => {
-        if (r.season !== season) { run = 0; season = r.season; }
+        if (r.season !== season) { if (!across) run = 0; season = r.season; }
         if (!hit(r)) { run = 0; return; }
         if (!run) start = r;
         run++;
@@ -4330,8 +4332,9 @@ function askAnswer(raw) {
       });
     });
     if (!best.length) return `${mgrs[0] || 'No one'} has no ${losing ? 'losses' : 'wins'} on record${yr ? ' in ' + yr : ''}.`;
-    return `${mgrs.length ? `${mgrs[0]}'s longest` : 'Longest'} ${losing ? 'losing' : 'winning'} streak${yr ? ` in ${yr}` : ''}: ${best[0].len} straight -- ` +
-      best.slice(0, 3).map(b => `${mgrs.length ? '' : b.m + ' '}(${b.end.season}, Weeks ${b.start.week}–${b.end.week})`).join('; ') + '.';
+    const span = b => b.start.season === b.end.season ? `${b.end.season}, Weeks ${b.start.week}–${b.end.week}` : `${b.start.season} Week ${b.start.week} – ${b.end.season} Week ${b.end.week}`;
+    return `${mgrs.length ? `${mgrs[0]}'s longest` : 'Longest'} ${losing ? 'losing' : 'winning'} streak${yr ? ` in ${yr}` : across ? ' across seasons' : ''}: ${best[0].len} straight -- ` +
+      best.slice(0, 3).map(b => `${mgrs.length ? '' : b.m + ' '}(${span(b)})`).join('; ') + '.';
   }
 
   // A specific week's saved pre-kickoff lines (current season only -- saving started in 2026).
@@ -4470,8 +4473,26 @@ function askAnswer(raw) {
 
   // ===== General answers =====
 
+  // Who has the best record against one manager ("who owns Gurminder head to head").
+  if (mgrs.length === 1 && !player && (/\bwho\b/.test(lower) || /\bnemesis\b/.test(lower)) && /\bhead.to.head\b|\bh2h\b|\bnemesis\b|\bowns\b|\bbest record (against|vs\.?|over)\b|\bmost wins (against|vs\.?|over)\b|\bbeat(en)? \w+( \w+)? the most\b/.test(lower)) {
+    const m = mgrs[0];
+    const type = q.playoffs ? 'playoff' : q.regular ? 'regular' : 'all';
+    const rows = managers.filter(o => o !== m).map(o => {
+      const r = h2hRecord(o, m, type), gs = yr ? r.games.filter(g => g.season === yr) : r.games;
+      let w = 0, l = 0, t = 0;
+      gs.forEach(g => { const so = g.mA === o ? g.sA : g.sB, sm = g.mA === o ? g.sB : g.sA; if (so > sm) w++; else if (sm > so) l++; else t++; });
+      return { o, w, l, t, n: gs.length, pct: winPctOf(w, l, t) };
+    }).filter(r => r.n).sort((a, b) => b.pct - a.pct || b.w - a.w);
+    const when = (yr ? ` in ${yr}` : ' all-time') + (q.playoffs ? ' in the playoffs' : q.regular ? ' in the regular season' : '');
+    if (!rows.length) return `${m} has no games on record${when}.`;
+    const top = rows.filter(r => r.pct === rows[0].pct && r.w === rows[0].w);
+    const line = r => `${r.o} ${recordStr(r.w, r.l, r.t)}`;
+    return `Best record against ${m}${when}: ${top.map(line).join(' & ')} (${(top[0].pct * 100).toFixed(0)}%).` +
+      (rows.length > top.length ? ` Next: ${rows.slice(top.length, top.length + 2).map(line).join('; ')}.` : '');
+  }
+
   // Head-to-head record
-  if (mgrs.length >= 2 && /(record against|\bvs?\b|versus|head.to.head|h2h|compare|against|\brecord\b|better than|who is better|who's better|\bbeat(en)?\b)/.test(lower)) {
+  if (mgrs.length >= 2 && /(record against|\bvs?\b|versus|head.to.head|h2h|compare|against|\brecord\b|\bseries\b|\bbetween\b|\bmatchups?\b|better than|who is better|who's better|\bbeat(en)?\b)/.test(lower)) {
     const all = h2hRecord(mgrs[0], mgrs[1], q.playoffs ? 'playoff' : q.regular ? 'regular' : 'all');
     const games = yr ? all.games.filter(g => g.season === yr) : all.games;
     const when = (yr ? `in ${yr}` : 'all-time') + (q.playoffs ? ' in the playoffs' : q.regular ? ' in the regular season' : '');
@@ -4496,17 +4517,32 @@ function askAnswer(raw) {
     const hits = [];
     Object.keys(DRAFTS).forEach(year => {
       DRAFTS[year].picks.forEach(p => {
-        if (p.player === player) hits.push({ year, ...p, manager: managerForTeam(parseInt(year), p.team) });
+        if (p.player === player && (!yr || Number(year) === yr)) hits.push({ year, ...p, manager: managerForTeam(parseInt(year), p.team) });
       });
     });
     if (hits.length) {
       return hits.map(h => `${h.year}: ${h.manager} drafted ${h.player} in Round ${h.round}, Pick ${h.pick} (overall ${h.overall}).`).join('<br>');
     }
+    if (yr && DRAFTS[yr]) return `${player} wasn't drafted in ${yr}.`;
   }
 
-  // A manager's draft picks in a specific year
-  if (mgrs.length === 1 && yr && DRAFTS[yr] && /draft/.test(lower)) {
+  // A manager's draft picks in a specific year: the whole draft, one round, or the first pick.
+  if (mgrs.length === 1 && yr && DRAFTS[yr] && /\bdraft(ed)?\b|\bpick(s|ed)?\b|\b(took|take|taken|select(ed)?)\b|\b(first|1st|number one|no\.? ?1|#1) overall\b/.test(lower)) {
     const picks = DRAFTS[yr].picks.filter(p => managerForTeam(yr, p.team) === mgrs[0]).sort((a,b) => a.overall-b.overall);
+    const roundM = lower.match(/\bround (\d{1,2})\b|\b(\d{1,2})(st|nd|rd|th).round\b|\b(first|second|third|fourth|fifth).round\b/);
+    const roundN = roundM ? Number(roundM[1] || roundM[2]) || { first: 1, second: 2, third: 3, fourth: 4, fifth: 5 }[roundM[4]] : null;
+    const pickText = p => `${p.player} (${p.position}, Round ${p.round}, Pick ${p.pick}${p.keeper ? ', keeper' : ''})`;
+    if (picks.length && /\b(first|1st|number one|no\.? ?1|#1) overall\b/.test(lower)) {
+      const top = DRAFTS[yr].picks.find(x => x.overall === 1);
+      const mine = top && managerForTeam(yr, top.team) === mgrs[0];
+      return mine ? `${mgrs[0]} took ${top.player} (${top.position}) first overall in the ${yr} draft.`
+        : `${mgrs[0]} didn't pick first overall in ${yr}${top ? ` -- ${managerForTeam(yr, top.team)} took ${top.player}` : ''}. ${mgrs[0]}'s first pick: ${pickText(picks[0])}.`;
+    }
+    if (picks.length && roundN) {
+      const inRound = picks.filter(p => p.round === roundN);
+      return inRound.length ? `${mgrs[0]}'s ${yr} Round ${roundN} pick${inRound.length > 1 ? 's' : ''}: ${inRound.map(pickText).join('; ')}.` : `${mgrs[0]} had no Round ${roundN} pick in ${yr}.`;
+    }
+    if (picks.length && /\bfirst (draft )?pick\b|\btop pick\b/.test(lower)) return `${mgrs[0]}'s first pick in ${yr}: ${pickText(picks[0])}.`;
     if (picks.length) {
       return `${mgrs[0]}'s ${yr} draft: ` + picks.map(p => `R${p.round} - ${p.player}`).join(', ');
     }
@@ -4757,6 +4793,18 @@ function askAnswer(raw) {
     if (keeper26) return keeperNote.trim();
   }
 
+  // A manager's career regular-season record ("Mac's all time record", "Stuart Duncan career wins").
+  if (mgrs.length === 1 && !yr && !q.playoffs && (/\brecord\b/.test(lower) || /\b(career|all.time|lifetime|total|overall) (wins|losses|w-l)\b/.test(lower)) &&
+      !/\b(score|scoring|points?|streak|keeper|power|draft|lines?|spread|odds|best|worst|weeks?)\b/.test(lower)) {
+    const m = mgrs[0];
+    const sum = cat => RAW.filter(d => d.manager === m && d.category === cat).reduce((a, b) => a + b.value, 0);
+    const w = sum('Wins'), l = sum('Losses'), t = tiesFor(m);
+    const seasons = [...new Set(RAW.filter(d => d.manager === m && d.category === 'Wins').map(d => d.season))].sort((a, b) => a - b);
+    const live = seasons.includes(CURRENT_SEASON.year) && !finishedSet.has(CURRENT_SEASON.year);
+    return `${m}'s career regular-season record: ${recordStr(w, l, t)} (${(winPctOf(w, l, t) * 100).toFixed(1)}% wins) over ${seasons.length} seasons, ` +
+      `${seasons[0]}–${seasons[seasons.length - 1]}${live ? ` (${CURRENT_SEASON.year} in progress)` : ''}.`;
+  }
+
   // A manager's record / team name in a given year
   if (mgrs.length === 1 && yr) {
     const w = RAW.find(d=>d.season===yr&&d.manager===mgrs[0]&&d.category==='Wins');
@@ -4911,8 +4959,8 @@ function askAnswer(raw) {
   // Live, per-season facts from CURRENT_SEASON (not the static LEAGUE_SETTINGS blobs below) --
   // these need to come before the general settings-topic loop so a specific date question gets
   // the specific date, not the whole general settings blob.
-  if (/(fee|dues)/.test(lower)) {
-    return CURRENT_SEASON.leagueFeeAmount ? `League fee is ${CURRENT_SEASON.leagueFeeAmount}, due ${formatDateTime(CURRENT_SEASON.leagueFeeDeadline)}.` : "The league fee hasn't been set for this season yet.";
+  if (/(fee|dues)|\bbuy.?in\b/.test(lower)) {
+    return CURRENT_SEASON.leagueFeeAmount ? `League fee is ${CURRENT_SEASON.leagueFeeAmount}${CURRENT_SEASON.leagueFeeDeadline ? `, due ${formatDateTime(CURRENT_SEASON.leagueFeeDeadline)}` : ''}.` : "The league fee hasn't been set for this season yet.";
   }
   // Draft order is checked before draft date, and draft date explicitly excludes "order" in its
   // own trigger below -- otherwise a question about draft ORDER ("when is the draft order
