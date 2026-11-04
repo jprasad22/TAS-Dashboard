@@ -24,6 +24,10 @@ Playoff weeks (playoff_week_start and later):
      those totals against Sleeper's standings, which also stop at the regular season.
   End-of-season rows (standings, playoff finishes, playoff wins) come from tools/season_end.py.
 
+Every run that writes also refreshes data/player_names.json ({sleeper_id: [name, position]} for every
+rostered player), which the Keeper Compliance tab uses -- the dashboard itself must not fetch Sleeper's
+multi-MB players/nfl. To refresh only that file: python3 tools/weekly_update.py --names-only
+
 Ties count as neither a win nor a loss in RAW (RAW has no Ties category; the dashboard derives
 ties from games.json). Run validate.py afterwards, then update BUILD_DATE in index.html.
 
@@ -45,6 +49,18 @@ def sleeper(path):
     req = urllib.request.Request(f"https://api.sleeper.app/v1/{path}", headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=60) as res:
         return json.load(res)
+
+
+def save_player_names(rosters, data_dir):
+    ids = sorted({pid for r in rosters for pid in (r.get("players") or [])})
+    db = sleeper("players/nfl")
+    names = {}
+    for pid in ids:
+        p = db.get(pid) or {}
+        name = p.get("full_name") or f"{p.get('first_name') or ''} {p.get('last_name') or ''}".strip() or pid
+        names[pid] = [name, p.get("position") or ""]
+    (Path(data_dir) / "player_names.json").write_text(json.dumps(names, separators=(",", ":"), sort_keys=True))
+    print(f"player_names.json: {len(names)} rostered players")
 
 
 def from_html(pattern, html):
@@ -83,19 +99,25 @@ def standings_mismatches(totals, rosters, manager_of):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("week", type=int)
+    ap.add_argument("week", type=int, nargs="?")
     ap.add_argument("--league", help="Sleeper league ID (default: SLEEPER_LEAGUE_ID in index.html)")
     ap.add_argument("--season", type=int, help="season year (default: CURRENT_SEASON.year in index.html)")
     ap.add_argument("--data-dir", default="data", help="folder holding raw.json and games.json")
     ap.add_argument("--dry-run", action="store_true", help="print what would be written, write nothing")
+    ap.add_argument("--names-only", action="store_true", help="only refresh data/player_names.json")
     args = ap.parse_args()
     week = args.week
+    if week is None and not args.names_only:
+        ap.error("week is required (or pass --names-only)")
 
     html = Path("index.html").read_text(encoding="utf-8")
     league_id = args.league or from_html(r'const SLEEPER_LEAGUE_ID = "(\d+)"', html)
     season = args.season or int(from_html(r"const CURRENT_SEASON = \{\s*year: (\d+)", html))
     name_map = dict(re.findall(r"'([^']+)':\s*'([^']+)'", from_html(r"const SLEEPER_USERNAME_TO_MANAGER = \{(.*?)\};", html)))
     raw_path, games_path = Path(args.data_dir) / "raw.json", Path(args.data_dir) / "games.json"
+    if args.names_only:
+        save_player_names(sleeper(f"league/{league_id}/rosters"), args.data_dir)
+        return
 
     raw_text, games_text = raw_path.read_text(), games_path.read_text()
     raw, games = json.loads(raw_text), json.loads(games_text)
@@ -179,6 +201,7 @@ def main():
         return
     games_path.write_text(json.dumps(games))
     raw_path.write_text(json.dumps(raw))
+    save_player_names(rosters, args.data_dir)
     print("Next: python3 validate.py, then update BUILD_DATE in index.html."
           + (" When the last playoff week is in, run tools/season_end.py." if is_playoff else ""))
 
