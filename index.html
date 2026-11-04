@@ -767,6 +767,7 @@
     <button class="tab-btn" data-tab="rosters">Rosters &amp; Draft</button>
     <button class="tab-btn" data-tab="trade">Trade Analyzer</button>
     <button class="tab-btn" data-tab="picks">Pick Compliance</button>
+    <button class="tab-btn" data-tab="keepers">Keeper Compliance</button>
     <button class="tab-btn" data-tab="settings">League Settings</button>
     <button class="tab-btn" data-tab="ask">Ask</button>
   </div>
@@ -1392,6 +1393,25 @@
     <footer>Rounds 1&ndash;5 held counts every pick a team owns, its own or one it acquired.</footer>
   </div>
 
+  <div id="keepersTab" class="tab-panel" style="display:none;">
+    <div class="ask-disclaimer">
+      <ul>
+        <li>Every rostered player&rsquo;s keeper cost for next year&rsquo;s draft, checked against the Keeper Settings in League Settings. Rosters and traded picks are live from Sleeper.</li>
+        <li><b>Checked:</b> draft-round cost (Round 9 for undrafted players and anyone taken after Round 9), the Repeated Keeper Rule, the 3-year maximum, the Round 1 restrictions, and Traded Keeper Picks &mdash; if a team no longer holds a pick in the cost round, the cost moves up to the nearest earlier round it holds, never into Round 1.</li>
+        <li>Rosters can still change until the season ends. The Committee has the final say.</li>
+      </ul>
+    </div>
+    <div class="table-card" style="overflow-x:auto;">
+      <div class="table-head">
+        <h2 id="keeperCheckTitle">Keeper Compliance</h2>
+        <div class="hint" id="keeperCheckSummary">Loading rosters from Sleeper...</div>
+      </div>
+      <div style="margin:0 0 12px;"><select id="keeperCheckManager"><option value="">All managers</option></select></div>
+      <table id="keeperCheckTable"></table>
+    </div>
+    <footer>Pick used is a pick the team holds in that round, its own or one it acquired. A keeper still counts toward the 2-picks-in-Rounds-1&ndash;5 rule.</footer>
+  </div>
+
   <div id="recapTab" class="tab-panel" style="display:none;">
     <div class="ask-disclaimer">
       <ul>
@@ -1575,7 +1595,7 @@ const CURRENT_SEASON = {
 // or raw HTML (e.g. "<p>...</p><ul><li>...</li></ul>") for more structure. Leave "" for "not yet added" placeholder.
 const LEAGUE_SETTINGS = {
   scoring: "<div class=\"settings-subhead\">Passing</div>\n<ul>\n<li><b>1 point</b> per 25 passing yards</li>\n<li><b>4 points</b> per passing touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n<li><b>-2 points</b> per interception thrown</li>\n</ul>\n<div class=\"settings-subhead\">Rushing</div>\n<ul>\n<li><b>1 point</b> per 10 rushing yards</li>\n<li><b>6 points</b> per rushing touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n</ul>\n<div class=\"settings-subhead\">Receiving</div>\n<ul>\n<li><b>1 point</b> per reception (full PPR)</li>\n<li><b>1 point</b> per 10 receiving yards</li>\n<li><b>6 points</b> per receiving touchdown</li>\n<li><b>2 points</b> per 2-point conversion</li>\n</ul>\n<div class=\"settings-subhead\">Kicking</div>\n<ul>\n<li><b>3 points</b> per field goal made, 0&ndash;39 yards</li>\n<li><b>4 points</b> per field goal made, 40&ndash;49 yards</li>\n<li><b>5 points</b> per field goal made, 50&ndash;59 yards</li>\n<li><b>6 points</b> per field goal made, 60+ yards</li>\n<li><b>1 point</b> per extra point (PAT) made</li>\n<li>No penalty for missed kicks</li>\n</ul>\n<div class=\"settings-subhead\">Team Defense / Special Teams</div>\n<ul>\n<li><b>6 points</b> per defensive or special teams touchdown</li>\n<li><b>1 point</b> per sack</li>\n<li><b>2 points</b> per interception</li>\n<li><b>2 points</b> per fumble recovery</li>\n<li><b>2 points</b> per safety</li>\n<li><b>1 point</b> per special teams forced fumble</li>\n<li><b>1 point</b> per special teams fumble recovery</li>\n</ul>\n<div class=\"settings-subhead\">Points Allowed (Team Defense)</div>\n<ul>\n<li><b>10 points</b> &mdash; shutout (0 points allowed)</li>\n<li><b>7 points</b> &mdash; 1&ndash;6 points allowed</li>\n<li><b>4 points</b> &mdash; 7&ndash;13 points allowed</li>\n<li><b>1 point</b> &mdash; 14&ndash;20 points allowed</li>\n<li><b>0 points</b> &mdash; 21&ndash;27 points allowed</li>\n<li><b>-1 point</b> &mdash; 28&ndash;34 points allowed</li>\n<li><b>-4 points</b> &mdash; 35+ points allowed</li>\n</ul>\n<div class=\"settings-subhead\">Misc</div>\n<ul>\n<li><b>-2 points</b> per fumble lost</li>\n<li><b>6 points</b> per fumble recovery touchdown</li>\n</ul>",
-  keeper: "<div class=\"settings-subhead\">Draft Round Cost</div>\n<ul>\n<li>Each keeper costs the draft pick from the round they were originally drafted in the previous season.</li>\n</ul>\n<div class=\"settings-subhead\">Repeated Keeper Rule</div>\n<ul>\n<li>If a player is kept for a second consecutive year (or more), their draft round cost moves up one round earlier each additional year.</li>\n<li>Example: Drafted in Round 8 &rarr; Year 1 keeper cost = Round 8 &rarr; Year 2 keeper cost = Round 7 &rarr; Year 3 keeper cost = Round 6.</li>\n</ul>\n<div class=\"settings-subhead\">Undrafted / Waiver Players</div>\n<ul>\n<li>If a keeper was originally undrafted (added from waivers), they are assigned a 9th-round cost in the first year they are kept.</li>\n</ul>\n<div class=\"settings-subhead\">Maximum Keeper Duration</div>\n<ul>\n<li>You may keep the same player for a maximum of 3 consecutive years (including the original year you first keep them). After that, they must re-enter the draft.</li>\n</ul>\n<div class=\"settings-subhead\">Round 1 Restrictions</div>\n<ul>\n<li>Players drafted in Round 1 cannot be kept under any circumstances.</li>\n<li>Players whose keeper cost would advance into Round 1 in a future season are also ineligible to be kept in the year before they would reach Round 1.</li>\n</ul>\n<div class=\"settings-subhead\">Traded Players</div>\n<ul>\n<li>All keeper rules and costs apply equally to traded players. A traded player&rsquo;s draft round cost and keeper eligibility continue from their original status and history, regardless of which team owns them.</li>\n</ul>\n<div class=\"settings-subhead\">Keeper Limit</div>\n<ul>\n<li>Each team may keep only 1 player per season.</li>\n</ul>\n<div class=\"settings-subhead\">Late-Round Draft Rule</div>\n<ul>\n<li>Any player drafted after Round 9 is defaulted to a Round 9 keeper cost in their first keeper year (same as an undrafted/waiver pickup).</li>\n</ul>",
+  keeper: "<div class=\"settings-subhead\">Draft Round Cost</div>\n<ul>\n<li>Each keeper costs the draft pick from the round they were originally drafted in the previous season.</li>\n</ul>\n<div class=\"settings-subhead\">Repeated Keeper Rule</div>\n<ul>\n<li>If a player is kept for a second consecutive year (or more), their draft round cost moves up one round earlier each additional year.</li>\n<li>Example: Drafted in Round 8 &rarr; Year 1 keeper cost = Round 8 &rarr; Year 2 keeper cost = Round 7 &rarr; Year 3 keeper cost = Round 6.</li>\n</ul>\n<div class=\"settings-subhead\">Undrafted / Waiver Players</div>\n<ul>\n<li>If a keeper was originally undrafted (added from waivers), they are assigned a 9th-round cost in the first year they are kept.</li>\n</ul>\n<div class=\"settings-subhead\">Maximum Keeper Duration</div>\n<ul>\n<li>You may keep the same player for a maximum of 3 consecutive years (including the original year you first keep them). After that, they must re-enter the draft.</li>\n</ul>\n<div class=\"settings-subhead\">Round 1 Restrictions</div>\n<ul>\n<li>Players drafted in Round 1 cannot be kept under any circumstances.</li>\n<li>Players whose keeper cost would advance into Round 1 in a future season are also ineligible to be kept in the year before they would reach Round 1.</li>\n</ul>\n<div class=\"settings-subhead\">Traded Keeper Picks (New for 2027)</div>\n<ul>\n<li>A keeper uses a pick you hold in their keeper-cost round &mdash; your own or one you acquired.</li>\n<li>If you no longer hold a pick in that round, the cost moves up to the nearest earlier round where you still hold a pick.</li>\n<li>Keepers can never cost a Round 1 pick, so if the only earlier pick left is in Round 1, the player can&rsquo;t be kept.</li>\n<li>Example: a player who costs a Round 2 pick can&rsquo;t be kept by a team that has traded away its Round 2 pick.</li>\n<li>The move-up applies to that draft only &mdash; the next year&rsquo;s cost still follows the Repeated Keeper Rule from the original round.</li>\n<li>The pick used on a keeper still counts toward the 2-picks-in-Rounds-1&ndash;5 rule.</li>\n<li>Check every player&rsquo;s cost in the Keeper Compliance tab.</li>\n</ul>\n<div class=\"settings-subhead\">Traded Players</div>\n<ul>\n<li>All keeper rules and costs apply equally to traded players. A traded player&rsquo;s draft round cost and keeper eligibility continue from their original status and history, regardless of which team owns them.</li>\n</ul>\n<div class=\"settings-subhead\">Keeper Limit</div>\n<ul>\n<li>Each team may keep only 1 player per season.</li>\n</ul>\n<div class=\"settings-subhead\">Late-Round Draft Rule</div>\n<ul>\n<li>Any player drafted after Round 9 is defaulted to a Round 9 keeper cost in their first keeper year (same as an undrafted/waiver pickup).</li>\n</ul>",
   draftPickRules: "<div class=\"settings-subhead\">Tradable Picks (New for 2026)</div>\n<ul>\n<li>Draft picks may now be traded between managers.</li>\n<li><b>Only 2027 picks are tradable right now.</b> Current-year (2026) picks cannot be traded at all, and nothing beyond 2027 is allowed either \u2014 a strict 1-year lookahead, not this season plus next.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Requirements</div>\n<ul>\n<li>Pick trades must be <b>pick-for-pick</b> \u2014 the same number of picks must go each way, so every team has the same total number of picks at draft time. Players can be part of the trade.</li>\n<li><b>No side deals:</b> all compensation for a pick trade must be spelled out explicitly within the trade itself \u2014 no off-the-books agreements.</li>\n</ul>\n<div class=\"settings-subhead\">Restrictions</div>\n<ul>\n<li>Every team must hold at least <b>2 picks in Rounds 1\u20135</b> of each future draft. They don\u2019t have to be the team\u2019s own picks.</li>\n</ul>",
   draftRules: "<div class=\"settings-subhead\">Draft Format</div>\n<ul>\n<li>Draft type: <b>Snake</b></li>\n<li>Time per pick: <b>60 seconds</b></li>\n</ul>\n<div class=\"settings-subhead\">Automation</div>\n<ul>\n<li><b>Autostart:</b> the draft automatically begins at the scheduled start time.</li>\n<li><b>CPU Auto Pick:</b> enabled &mdash; if a manager runs out of time on their pick, the system auto-picks for them.</li>\n</ul>",
 
@@ -2651,6 +2671,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('settingsTab').style.display = tab === 'settings' ? '' : 'none';
     document.getElementById('tradeTab').style.display = tab === 'trade' ? '' : 'none';
     document.getElementById('picksTab').style.display = tab === 'picks' ? '' : 'none';
+    document.getElementById('keepersTab').style.display = tab === 'keepers' ? '' : 'none';
     document.getElementById('recapTab').style.display = tab === 'recap' ? '' : 'none';
     document.getElementById('askTab').style.display = tab === 'ask' ? '' : 'none';
     document.getElementById('rostersTab').style.display = tab === 'rosters' ? '' : 'none';
@@ -5145,6 +5166,21 @@ async function fetchSleeperJson(path) {
 // ---------- Pick Compliance ----------
 const PICK_MIN_EARLY = 2, PICK_EARLY_ROUND = 5;
 
+// Every pick each roster holds for one draft year: { roster_id: [{ round, original: roster_id }] }.
+function heldPicksByRoster(tradedPicks, rosterIds, season, rounds) {
+  const owner = {};
+  tradedPicks.filter(p => Number(p.season) === season).forEach(p => { owner[`${p.roster_id}|${p.round}`] = p.owner_id; });
+  const held = {};
+  rosterIds.forEach(rid => { held[rid] = []; });
+  rosterIds.forEach(orig => {
+    for (let round = 1; round <= rounds; round++) {
+      const o = owner[`${orig}|${round}`] ?? orig;
+      if (held[o]) held[o].push({ round, original: orig });
+    }
+  });
+  return held;
+}
+
 // Pure: everything the Pick Compliance tab shows, from Sleeper's transactions and traded_picks.
 // nameOf maps roster_id to manager; tradable is the one draft year picks may be traded for.
 function computePickCompliance(transactions, tradedPicks, nameOf, tradable, rounds) {
@@ -5158,17 +5194,11 @@ function computePickCompliance(transactions, tradedPicks, nameOf, tradable, roun
       const uneven = teams.some(m => picks.filter(p => p.from === m).length !== picks.filter(p => p.to === m).length);
       return { created: t.created, teams, picks, players, faab, wrongYear, uneven };
     });
-  const owner = {};
-  tradedPicks.filter(p => Number(p.season) === tradable).forEach(p => { owner[`${p.roster_id}|${p.round}`] = p.owner_id; });
+  const heldBy = heldPicksByRoster(tradedPicks, Object.keys(nameOf).map(Number), tradable, rounds);
   const teams = Object.keys(nameOf).map(Number).map(rid => {
     const manager = nameOf[rid];
     const sent = trades.flatMap(t => t.picks.filter(p => p.from === manager));
-    const held = [];
-    Object.keys(nameOf).map(Number).forEach(orig => {
-      for (let round = 1; round <= rounds; round++) {
-        if ((owner[`${orig}|${round}`] ?? orig) === rid) held.push({ round, original: nameOf[orig] });
-      }
-    });
+    const held = heldBy[rid].map(p => ({ round: p.round, original: nameOf[p.original] }));
     const mine = trades.filter(t => t.teams.includes(manager));
     const issues = [];
     const early = held.filter(p => p.round <= PICK_EARLY_ROUND).length;
@@ -5223,6 +5253,98 @@ async function ensurePickCompliance() {
   }
 }
 document.querySelector('.tab-btn[data-tab="picks"]').addEventListener('click', ensurePickCompliance);
+
+// ---------- Keeper Compliance ----------
+const KEEPER_MAX_YEARS = 3, KEEPER_DEFAULT_ROUND = 9;
+// Each season's keepers (round = that season's cost, keeperYear), for the Repeated Keeper Rule.
+// Add the new season's list after its draft, or the tab says the keeper record is missing.
+const KEEPER_SELECTIONS_BY_YEAR = { 2026: KEEPER_SELECTIONS_2026 };
+
+// Pure: next year's keeper cost and status for every rostered player, per the Keeper Settings.
+// draftPicks are Sleeper's picks for this season's draft; keptBy maps player name -> this season's
+// keeper ({ round, keeperYear }) -- by name, since Sleeper doesn't flag every keeper pick; held maps roster_id -> next year's picks held; names maps a
+// Sleeper id -> [name, position] (data/player_names.json).
+function computeKeeperCompliance(rosters, nameOf, draftPicks, keptBy, held, names, season) {
+  const drafted = {};
+  draftPicks.forEach(p => { if (p.player_id) drafted[p.player_id] = p; });
+  const posRank = p => { const i = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].indexOf(p.pos); return i < 0 ? 9 : i; };
+  return rosters.map(r => {
+    const manager = nameOf[r.roster_id];
+    const rounds = new Set((held[r.roster_id] || []).map(p => p.round));
+    const players = (r.players || []).map(id => {
+      const d = drafted[id], meta = (d && d.metadata) || {};
+      const draftName = [meta.first_name, meta.last_name].filter(Boolean).join(' ');
+      const k = d && keptBy[draftName];
+      const row = { id, name: (names[id] || [])[0] || draftName || `Sleeper player ${id}`,
+        pos: (names[id] || [])[1] || meta.position || '', cost: null, year: null, basis: '', pick: null, reason: '' };
+      if (k || (d && d.is_keeper)) {
+        if (!k) { row.reason = `kept in ${season}, but that keeper record is missing`; return row; }
+        row.basis = `kept in ${season} at R${k.round} (year ${k.keeperYear})`;
+        if (k.keeperYear >= KEEPER_MAX_YEARS) { row.reason = `${KEEPER_MAX_YEARS}-year maximum reached`; return row; }
+        row.cost = k.round - 1; row.year = k.keeperYear + 1;
+      } else if (d) {
+        row.basis = `drafted R${d.round} in ${season}${d.round > KEEPER_DEFAULT_ROUND ? ` → R${KEEPER_DEFAULT_ROUND}` : ''}`;
+        if (d.round === 1) { row.reason = 'drafted in Round 1'; return row; }
+        row.cost = Math.min(d.round, KEEPER_DEFAULT_ROUND); row.year = 1;
+      } else {
+        row.basis = `undrafted in ${season} → R${KEEPER_DEFAULT_ROUND}`;
+        row.cost = KEEPER_DEFAULT_ROUND; row.year = 1;
+      }
+      if (row.cost < 2) { row.reason = 'cost would reach Round 1'; return row; }
+      // Traded Keeper Picks: use a pick held in the cost round, else the nearest earlier round held -- never Round 1.
+      for (let rd = row.cost; rd >= 2; rd--) if (rounds.has(rd)) { row.pick = rd; break; }
+      if (!row.pick) row.reason = row.cost === 2 ? 'Round 2 pick traded away (keepers can’t move into Round 1)'
+        : `no pick held in Rounds 2–${row.cost} (keepers can’t move into Round 1)`;
+      return row;
+    }).sort((a, b) => !!a.reason - !!b.reason || posRank(a) - posRank(b) || a.name.localeCompare(b.name));
+    return { manager, players };
+  }).sort((a, b) => a.manager.localeCompare(b.manager));
+}
+
+let keeperComplianceData = null;
+function renderKeeperCompliance() {
+  const c = keeperComplianceData;
+  if (!c) return;
+  const pick = document.getElementById('keeperCheckManager').value;
+  const teams = c.teams.filter(t => !pick || t.manager === pick);
+  const all = c.teams.flatMap(t => t.players);
+  const moved = all.filter(p => p.pick && p.pick < p.cost).length;
+  document.getElementById('keeperCheckTitle').textContent = `Keeper Compliance — ${c.draftYear} Draft`;
+  document.getElementById('keeperCheckSummary').textContent = `${all.filter(p => !p.reason).length} of ${all.length} rostered players keepable · ` +
+    `${moved} with a cost moved up by traded picks · rosters and picks live from Sleeper`;
+  document.getElementById('keeperCheckTable').innerHTML = `<thead><tr><th>Manager</th><th>Player</th><th>${c.draftYear} cost</th><th>Pick used</th><th>Status</th></tr></thead><tbody>` +
+    teams.flatMap(t => t.players.map(p => `<tr><td>${t.manager}</td><td>${p.name}${p.pos ? ` <span style="color:var(--chalk-dim);">${p.pos}</span>` : ''}</td>` +
+      `<td>${p.cost ? `R${p.cost}` : '—'}<div style="color:var(--chalk-dim);font-size:11px;">${p.basis}${p.year ? ` · year ${p.year} of ${KEEPER_MAX_YEARS}` : ''}</div></td>` +
+      `<td>${p.pick ? `R${p.pick}` : '—'}</td>` +
+      `<td style="min-width:200px;" class="${p.reason ? 'num-neg' : 'num-pos'}">${p.reason ? `Can’t be kept: ${p.reason}` : p.pick < p.cost ? `Keepable — moves up to R${p.pick} (no R${p.pick + 1 === p.cost ? p.cost : `${p.pick + 1}–R${p.cost}`} pick held)` : 'Keepable'}</td></tr>`)).join('') + '</tbody>';
+}
+
+let keeperComplianceLoaded = false;
+async function ensureKeeperCompliance() {
+  if (keeperComplianceLoaded) return;
+  keeperComplianceLoaded = true;
+  try {
+    const season = CURRENT_SEASON.year;
+    const [users, rosters, tradedPicks, league, names] = await Promise.all([
+      ...['users', 'rosters', 'traded_picks'].map(p => fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/${p}`)),
+      fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}`), loadJson('data/player_names.json').catch(() => ({}))]);
+    const draftPicks = league.draft_id ? await fetchSleeperJson(`draft/${league.draft_id}/picks`) : [];
+    const uname = {}; users.forEach(u => { uname[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
+    const nameOf = {}; rosters.forEach(r => { nameOf[r.roster_id] = uname[r.owner_id]; });
+    const keptBy = {}; (KEEPER_SELECTIONS_BY_YEAR[season] || []).forEach(k => { keptBy[k.player] = k; });
+    const rounds = Math.max(...DRAFTS[Math.max(...Object.keys(DRAFTS).map(Number))].picks.map(p => p.round));
+    const held = heldPicksByRoster(tradedPicks, rosters.map(r => r.roster_id), season + 1, rounds);
+    keeperComplianceData = { draftYear: season + 1, teams: computeKeeperCompliance(rosters, nameOf, draftPicks, keptBy, held, names, season) };
+    const sel = document.getElementById('keeperCheckManager');
+    sel.innerHTML = '<option value="">All managers</option>' + keeperComplianceData.teams.map(t => `<option>${t.manager}</option>`).join('');
+    renderKeeperCompliance();
+  } catch (e) {
+    keeperComplianceLoaded = false;
+    document.getElementById('keeperCheckSummary').textContent = "Couldn't load rosters from Sleeper right now -- reopen this tab to try again.";
+  }
+}
+document.querySelector('.tab-btn[data-tab="keepers"]').addEventListener('click', ensureKeeperCompliance);
+document.getElementById('keeperCheckManager').addEventListener('change', renderKeeperCompliance);
 
 // ---------- Trade Analyzer ----------
 const tradeSides = { A: [], B: [] };
