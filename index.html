@@ -768,6 +768,7 @@
     <button class="tab-btn" data-tab="trade">Trade Analyzer</button>
     <button class="tab-btn" data-tab="picks">Pick Compliance</button>
     <button class="tab-btn" data-tab="keepers">Keeper Compliance</button>
+    <button class="tab-btn" data-tab="median">What If: Median</button>
     <button class="tab-btn" data-tab="settings">League Settings</button>
     <button class="tab-btn" data-tab="ask">Ask</button>
   </div>
@@ -1061,6 +1062,29 @@
             <div class="table-note" id="matchupLinesNote" style="display:none;">
               <span id="matchupLinesLocked"></span><span id="matchupLinesRecord" style="display:block;margin-bottom:4px;"></span>
               Lines are a dashboard-only estimate, just for fun: about 90% Sleeper's projections for each team's current starters, 10% how those starters have scored in this league over the last two weeks, plus a small nudge from the all-time head-to-head. Standings and head-to-head on their own turned out to predict worse than a coin flip, so they carry little or no weight. Tested on every 2025 game: it picked the winner about 6 times in 10 and missed the margin by about 31 points on average — fantasy is noisy. Odds are fair odds (no bookmaker margin).
+            </div>
+          </div>
+
+          <div id="seasonHighsWrap" style="display:none;margin-top:16px;">
+            <div class="table-card" style="overflow-x:auto;">
+              <div class="table-head">
+                <h2 id="seasonTopScoresTitle">Highest Team Scores</h2>
+                <div class="hint">best single-week scores this season, completed weeks</div>
+              </div>
+              <table>
+                <thead><tr><th>#</th><th style="text-align:left;cursor:default;">Manager</th><th>Wk</th><th>Score</th><th style="text-align:left;cursor:default;">Result</th></tr></thead>
+                <tbody id="seasonTopScoresBody"></tbody>
+              </table>
+            </div>
+            <div class="table-card" id="seasonTopPlayersCard" style="overflow-x:auto;display:none;margin-top:16px;">
+              <div class="table-head">
+                <h2 id="seasonTopPlayersTitle">Top Fantasy Players</h2>
+                <div class="hint">season total in our league's scoring, live from Sleeper &mdash; every NFL player, rostered or not</div>
+              </div>
+              <table>
+                <thead><tr><th>#</th><th style="text-align:left;cursor:default;">Player</th><th style="text-align:left;cursor:default;">Manager</th><th>GP</th><th>Pts</th></tr></thead>
+                <tbody id="seasonTopPlayersBody"></tbody>
+              </table>
             </div>
           </div>
 
@@ -1412,6 +1436,36 @@
     <footer>Pick used is a pick the team holds in that round, its own or one it acquired. A keeper still counts toward the 2-picks-in-Rounds-1&ndash;5 rule.</footer>
   </div>
 
+  <div id="medianTab" class="tab-panel" style="display:none;">
+    <div class="ask-disclaimer">
+      <ul>
+        <li><b>A what-if only.</b> This runs alongside the real league and changes nothing &mdash; real standings, playoffs and payouts still use the actual League Settings.</li>
+        <li><b>The idea:</b> each week a team earns 1 win for beating its opponent, and a second win for scoring above that week's league median. Each week counts as two games.</li>
+        <li><b>Median:</b> the middle score of all 12 teams that week (the average of the 6th and 7th highest), so exactly half the league beats it. A score equal to the median, or a head-to-head tie, counts as a tie.</li>
+        <li>Regular-season weeks only, and only weeks that are final. Sim standings are sorted by sim wins, then points for; teams still level share a rank.</li>
+      </ul>
+    </div>
+    <div style="margin:0 0 12px;"><select id="medianSeasonSelect"></select></div>
+    <div class="table-card" style="overflow-x:auto;">
+      <div class="table-head">
+        <h2 id="medianStandingsTitle">Median Standings</h2>
+        <div class="hint" id="medianStandingsHint"></div>
+      </div>
+      <table>
+        <thead><tr><th>Sim Rank</th><th style="text-align:left;cursor:default;">Manager</th><th>Sim Record</th><th>Head-to-Head</th><th>vs Median</th><th>Pts For</th><th>Actual Rank</th><th>Change</th></tr></thead>
+        <tbody id="medianStandingsBody"></tbody>
+      </table>
+    </div>
+    <div class="table-card" style="overflow-x:auto;margin-top:16px;">
+      <div class="table-head">
+        <h2 id="medianWeeklyTitle">Week by Week vs the Median</h2>
+        <div class="hint">green = above the median (+1), red = below; W/L/T = head-to-head result</div>
+      </div>
+      <table id="medianWeeklyTable"></table>
+    </div>
+    <footer>Actual Rank is the real regular-season order by record, then points for, through the same weeks. Change = how many places a team would move under the median rule.</footer>
+  </div>
+
   <div id="recapTab" class="tab-panel" style="display:none;">
     <div class="ask-disclaimer">
       <ul>
@@ -1616,7 +1670,7 @@ document.getElementById('seasonNumberLabel').textContent = `SEASON #${CURRENT_SE
 // "Last updated" = when this file was last changed, not page-load time. Update BUILD_DATE with
 // every change to this file. Date only, no time of day (a guessed clock time was wrong before),
 // and use the Eastern-time date -- a UTC clock shows tomorrow's date after 8 PM Eastern.
-const BUILD_DATE = "2026-11-03";
+const BUILD_DATE = "2026-11-15";
 document.getElementById('lastRefreshed').textContent = 'Last updated ' + new Date(BUILD_DATE + 'T12:00:00').toLocaleDateString('en-US', {
   month: 'short', day: 'numeric', year: 'numeric',
 });
@@ -2672,6 +2726,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tradeTab').style.display = tab === 'trade' ? '' : 'none';
     document.getElementById('picksTab').style.display = tab === 'picks' ? '' : 'none';
     document.getElementById('keepersTab').style.display = tab === 'keepers' ? '' : 'none';
+    document.getElementById('medianTab').style.display = tab === 'median' ? '' : 'none';
     document.getElementById('recapTab').style.display = tab === 'recap' ? '' : 'none';
     document.getElementById('askTab').style.display = tab === 'ask' ? '' : 'none';
     document.getElementById('rostersTab').style.display = tab === 'rosters' ? '' : 'none';
@@ -3576,6 +3631,76 @@ async function renderMatchupLines(week, pairs, managerByRoster) {
   document.getElementById('matchupLinesNote').style.display = '';
 }
 
+// ---------- Season Highs (In-Season) ----------
+// Highest single-week team scores in a season, from GAMES (completed weeks only, regular + playoff).
+function seasonTopTeamScores(season, n) {
+  const rows = [];
+  GAMES.filter(g => g.season === season).forEach(g => {
+    rows.push({ manager: g.mA, score: g.sA, opp: g.mB, oppScore: g.sB, week: g.week, type: g.type });
+    rows.push({ manager: g.mB, score: g.sB, opp: g.mA, oppScore: g.sA, week: g.week, type: g.type });
+  });
+  return rows.sort((a, b) => b.score - a.score || a.week - b.week).slice(0, n);
+}
+
+// Season-total fantasy points for every NFL player in the stats feed, scored with leaguePoints() (the
+// same scoring that matched Sleeper's weekly league points exactly). ownerOf: player_id -> manager.
+function seasonTopPlayers(statRows, scoring, ownerOf, n) {
+  return statRows.filter(r => r && r.stats && r.player).map(r => ({
+    id: r.player_id,
+    name: `${r.player.first_name || ''} ${r.player.last_name || ''}`.trim() || r.player_id,
+    pos: r.player.position, team: r.team || r.player.team || '',
+    gp: r.stats.gp || 0,
+    pts: Math.round(leaguePoints(r.stats, scoring) * 100) / 100,
+    manager: ownerOf[r.player_id] || null,
+  })).filter(p => p.pts > 0).sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name)).slice(0, n);
+}
+
+function renderSeasonTopScores() {
+  const season = CURRENT_SEASON.year;
+  const top = seasonTopTeamScores(season, 10);
+  if (!top.length) return;
+  document.getElementById('seasonTopScoresTitle').textContent = `Highest Team Scores, ${season}`;
+  document.getElementById('seasonTopScoresBody').innerHTML = top.map((r, i) => {
+    const res = r.score > r.oppScore ? 'W' : r.score < r.oppScore ? 'L' : 'T';
+    return `
+    <tr>
+      <td>${i + 1}</td>
+      <td style="text-align:left;"><div class="manager-cell"><span class="dot" style="background:${managerColor[r.manager] || 'var(--ink)'}"></span>${r.manager}</div></td>
+      <td>${r.type === 'playoff' ? 'P' : ''}${r.week}</td>
+      <td style="font-family:'JetBrains Mono';"><b>${fmt(r.score, 2)}</b></td>
+      <td style="text-align:left;white-space:nowrap;">${res} vs ${r.opp} <span style="font-family:'JetBrains Mono';color:var(--chalk-dim);">${fmt(r.oppScore, 2)}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('seasonHighsWrap').style.display = '';
+}
+
+// Loads after the standings are showing (the stats feed is about the size of the projections feed);
+// a failure just leaves the players card hidden.
+async function renderSeasonTopPlayers(rosters, managerByRoster) {
+  const season = CURRENT_SEASON.year;
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].map(p => `position%5B%5D=${p}`).join('&');
+  const [league, stats] = await Promise.all([
+    fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}`),
+    fetch(`https://api.sleeper.com/stats/nfl/${season}?season_type=regular&${positions}`)
+      .then(res => { if (!res.ok) throw new Error('stats HTTP ' + res.status); return res.json(); }),
+  ]);
+  const ownerOf = {};
+  rosters.forEach(r => (r.players || []).forEach(pid => { ownerOf[pid] = managerByRoster[r.roster_id]; }));
+  const top = seasonTopPlayers(stats, league.scoring_settings, ownerOf, 10);
+  if (!top.length) return;
+  document.getElementById('seasonTopPlayersTitle').textContent = `Top Fantasy Players, ${season}`;
+  document.getElementById('seasonTopPlayersBody').innerHTML = top.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td style="text-align:left;white-space:nowrap;"><b>${p.name}</b> <span style="color:var(--chalk-dim);font-size:11px;">${p.pos}${p.team ? ' &middot; ' + p.team : ''}</span></td>
+      <td style="text-align:left;">${p.manager ? `<div class="manager-cell"><span class="dot" style="background:${managerColor[p.manager] || 'var(--ink)'}"></span>${p.manager}</div>` : '<span style="color:var(--chalk-dim);">Free agent</span>'}</td>
+      <td>${p.gp}</td>
+      <td style="font-family:'JetBrains Mono';"><b>${fmt(p.pts, 1)}</b></td>
+    </tr>`).join('');
+  document.getElementById('seasonTopPlayersCard').style.display = '';
+  document.getElementById('seasonHighsWrap').style.display = '';
+}
+
 async function initInSeasonScoreboard() {
   const statusEl = document.getElementById('inSeasonStatus');
   try {
@@ -3599,6 +3724,7 @@ async function initInSeasonScoreboard() {
 
     const week = state.week;
     renderWeekInHistory(week); // pure local computation from GAMES, no extra fetch needed
+    renderSeasonTopScores();   // likewise
 
     const [matchups, rosters, users] = await Promise.all([
       fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/matchups/${week}`),
@@ -3608,6 +3734,7 @@ async function initInSeasonScoreboard() {
 
     const userById = {}; users.forEach(u => { userById[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
     const managerByRoster = {}; rosters.forEach(r => { managerByRoster[r.roster_id] = userById[r.owner_id] || `Roster ${r.roster_id}`; });
+    renderSeasonTopPlayers(rosters, managerByRoster).catch(e => console.warn('Top players unavailable:', e));
 
     // Live Standings: reuses the rosters/users fetch above; rendered BEFORE the matchups check because
     // standings (Sleeper's server-computed roster.settings) don't depend on this week's matchups posting.
@@ -5162,6 +5289,92 @@ async function fetchSleeperJson(path) {
   if (!res.ok) throw new Error('sleeper ' + path + ' failed: ' + res.status);
   return res.json();
 }
+
+// ---------- What If: Median (simulation only -- never feeds real standings) ----------
+// Each final regular-season week counts as two games: head-to-head, plus beating that week's median of
+// all scores. Ties (head-to-head, or a score exactly on the median) are half a win, as everywhere else.
+function computeMedianSim(season) {
+  const games = GAMES.filter(g => g.season === season && g.type === 'regular');
+  const weeks = [...new Set(games.map(g => g.week))].sort((a, b) => a - b);
+  const rows = {};
+  const row = m => rows[m] = rows[m] || { manager: m, h2hW: 0, h2hL: 0, h2hT: 0, medW: 0, medL: 0, medT: 0, pf: 0, weekly: {} };
+  const medians = {};
+  weeks.forEach(w => {
+    const wk = games.filter(g => g.week === w);
+    const scores = wk.flatMap(g => [g.sA, g.sB]).sort((a, b) => a - b);
+    const n = scores.length, mid = Math.floor(n / 2);
+    const median = n % 2 ? scores[mid] : (scores[mid - 1] + scores[mid]) / 2;
+    medians[w] = median;
+    wk.forEach(g => [[g.mA, g.sA, g.sB], [g.mB, g.sB, g.sA]].forEach(([m, sc, opp]) => {
+      const r = row(m);
+      const h2h = sc > opp ? 'W' : sc < opp ? 'L' : 'T';
+      const med = sc > median ? 'W' : sc < median ? 'L' : 'T';
+      r['h2h' + h2h]++; r['med' + med]++; r.pf += sc;
+      r.weekly[w] = { score: sc, h2h, med };
+    }));
+  });
+  const list = Object.values(rows);
+  list.forEach(r => {
+    r.simW = r.h2hW + r.medW; r.simL = r.h2hL + r.medL; r.simT = r.h2hT + r.medT;
+    r.pf = Math.round(r.pf * 100) / 100;
+  });
+  // Rank by wins (tie = half), then points for; level teams share a rank (1, 2, 2, 4).
+  const rankBy = (key, winsOf) => {
+    const sorted = [...list].sort((a, b) => winsOf(b) - winsOf(a) || b.pf - a.pf);
+    sorted.forEach((r, i) => {
+      const p = sorted[i - 1];
+      r[key] = (p && winsOf(p) === winsOf(r) && p.pf === r.pf) ? p[key] : i + 1;
+    });
+  };
+  rankBy('actualRank', r => r.h2hW + r.h2hT / 2);
+  rankBy('simRank', r => r.simW + r.simT / 2);
+  list.sort((a, b) => a.simRank - b.simRank || b.pf - a.pf || a.manager.localeCompare(b.manager));
+  return { season, weeks, medians, rows: list };
+}
+
+function renderMedianSim() {
+  const sel = document.getElementById('medianSeasonSelect');
+  if (!sel.options.length) {
+    const seasons = [...new Set(GAMES.filter(g => g.type === 'regular').map(g => g.season))].sort((a, b) => b - a);
+    sel.innerHTML = seasons.map(s => `<option value="${s}">${s}${getFinishedSeasons().has(s) ? '' : ' (in progress)'}</option>`).join('');
+    sel.addEventListener('change', renderMedianSim);
+  }
+  const sim = computeMedianSim(Number(sel.value));
+  const mono = "font-family:'JetBrains Mono';";
+  document.getElementById('medianStandingsTitle').textContent = `Median Standings, ${sim.season}`;
+  document.getElementById('medianStandingsHint').textContent = sim.weeks.length
+    ? `through Week ${sim.weeks[sim.weeks.length - 1]} — ${sim.weeks.length * 2} sim games per team` : 'no final weeks yet';
+  document.getElementById('medianStandingsBody').innerHTML = sim.rows.map(r => {
+    const move = r.actualRank - r.simRank;
+    const moveHtml = move > 0 ? `<span style="color:var(--good);font-weight:700;">▲${move}</span>`
+      : move < 0 ? `<span style="color:var(--danger);font-weight:700;">▼${-move}</span>` : '<span style="color:var(--chalk-dim);">—</span>';
+    return `
+    <tr>
+      <td>${r.simRank}</td>
+      <td style="text-align:left;"><div class="manager-cell"><span class="dot" style="background:${managerColor[r.manager] || 'var(--ink)'}"></span>${r.manager}</div></td>
+      <td style="${mono}"><b>${recordStr(r.simW, r.simL, r.simT)}</b></td>
+      <td style="${mono}">${recordStr(r.h2hW, r.h2hL, r.h2hT)}</td>
+      <td style="${mono}">${recordStr(r.medW, r.medL, r.medT)}</td>
+      <td>${fmt(r.pf, 1)}</td>
+      <td>${r.actualRank}</td>
+      <td>${moveHtml}</td>
+    </tr>`;
+  }).join('');
+  const head = `<thead><tr><th style="text-align:left;cursor:default;">Manager</th>${sim.weeks.map(w => `<th>Wk ${w}</th>`).join('')}</tr></thead>`;
+  const body = sim.rows.map(r => `
+    <tr>
+      <td style="text-align:left;white-space:nowrap;"><div class="manager-cell"><span class="dot" style="background:${managerColor[r.manager] || 'var(--ink)'}"></span>${r.manager}</div></td>
+      ${sim.weeks.map(w => {
+        const c = r.weekly[w];
+        if (!c) return '<td style="color:var(--chalk-dim);">—</td>';
+        const color = c.med === 'W' ? 'color:var(--good);font-weight:700;' : c.med === 'L' ? 'color:var(--danger);' : '';
+        return `<td style="${mono}white-space:nowrap;"><span style="${color}">${fmt(c.score, 1)}</span> <span style="color:var(--chalk-dim);font-size:10px;">${c.h2h}</span></td>`;
+      }).join('')}
+    </tr>`).join('');
+  const foot = `<tr style="border-top:2px solid var(--line);"><td style="text-align:left;"><b>Median</b></td>${sim.weeks.map(w => `<td style="${mono}"><b>${fmt(sim.medians[w], 2)}</b></td>`).join('')}</tr>`;
+  document.getElementById('medianWeeklyTable').innerHTML = head + '<tbody>' + body + foot + '</tbody>';
+}
+document.querySelector('.tab-btn[data-tab="median"]').addEventListener('click', renderMedianSim);
 
 // ---------- Pick Compliance ----------
 const PICK_MIN_EARLY = 2, PICK_EARLY_ROUND = 5;
