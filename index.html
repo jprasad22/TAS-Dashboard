@@ -1440,9 +1440,9 @@
     <div class="ask-disclaimer">
       <ul>
         <li><b>A what-if only.</b> This runs alongside the real league and changes nothing &mdash; real standings, playoffs and payouts still use the actual League Settings.</li>
-        <li><b>The idea:</b> each week a team earns 1 win for beating its opponent, and a second win for scoring above that week's league median. Each week counts as two games.</li>
+        <li><b>The idea:</b> each week a team earns 1 point for beating its opponent, and a second point for scoring above that week's league median &mdash; up to 2 points a week. Sim Pts is the running total (head-to-head + median); Sim Record shows the same thing as wins and losses, with each week counting as two games.</li>
         <li><b>Median:</b> the middle score of all 12 teams that week (the average of the 6th and 7th highest), so exactly half the league beats it. A score equal to the median, or a head-to-head tie, counts as a tie.</li>
-        <li>Regular-season weeks only, and only weeks that are final. Sim standings are sorted by sim wins, then points for; teams still level share a rank.</li>
+        <li>Regular-season weeks only, and only weeks that are final. Sim standings are sorted by Sim Pts, then points for; teams still level share a rank.</li>
       </ul>
     </div>
     <div style="margin:0 0 12px;"><select id="medianSeasonSelect"></select></div>
@@ -1452,7 +1452,7 @@
         <div class="hint" id="medianStandingsHint"></div>
       </div>
       <table>
-        <thead><tr><th>Sim Rank</th><th style="text-align:left;cursor:default;">Manager</th><th>Sim Record</th><th>Head-to-Head</th><th>vs Median</th><th>Pts For</th><th>Actual Rank</th><th>Change</th></tr></thead>
+        <thead><tr><th>Sim Rank</th><th style="text-align:left;cursor:default;">Manager</th><th title="1 for a head-to-head win + 1 for beating the median; ties are half">Sim Pts</th><th>Sim Record</th><th>Head-to-Head</th><th>vs Median</th><th>Pts For</th><th>Actual Rank</th><th>Change</th></tr></thead>
         <tbody id="medianStandingsBody"></tbody>
       </table>
     </div>
@@ -5351,8 +5351,9 @@ function renderMedianSim() {
     return `
     <tr>
       <td>${r.simRank}</td>
-      <td style="text-align:left;"><div class="manager-cell"><span class="dot" style="background:${managerColor[r.manager] || 'var(--ink)'}"></span>${r.manager}</div></td>
-      <td style="${mono}"><b>${recordStr(r.simW, r.simL, r.simT)}</b></td>
+      <td style="text-align:left;white-space:nowrap;"><div class="manager-cell"><span class="dot" style="background:${managerColor[r.manager] || 'var(--ink)'}"></span>${r.manager}</div></td>
+      <td style="${mono}"><b>${fmt(r.h2hW + r.h2hT / 2 + r.medW + r.medT / 2, (r.h2hT + r.medT) % 2 ? 1 : 0)}</b> <span style="color:var(--chalk-dim);font-size:10px;">${fmt(r.h2hW + r.h2hT / 2, r.h2hT % 2 ? 1 : 0)}+${fmt(r.medW + r.medT / 2, r.medT % 2 ? 1 : 0)}</span></td>
+      <td style="${mono}">${recordStr(r.simW, r.simL, r.simT)}</td>
       <td style="${mono}">${recordStr(r.h2hW, r.h2hL, r.h2hT)}</td>
       <td style="${mono}">${recordStr(r.medW, r.medL, r.medT)}</td>
       <td>${fmt(r.pf, 1)}</td>
