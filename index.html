@@ -530,6 +530,20 @@
   .sub-tab-btn:hover { color: var(--ink); }
   .sub-tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
 
+  /* ---------- Live brackets + prize watch ---------- */
+  .lb-section { margin-bottom: 18px; }
+  .lb-section h3 { font-family:'Bevan'; font-size: 15px; margin: 4px 0 10px; color: var(--ink); }
+  .lb-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .lb-week { font-family:'JetBrains Mono'; font-size: 11px; color: var(--chalk-dim); text-transform: uppercase; margin-bottom: 6px; }
+  .lb-game { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; background: var(--slate); }
+  .lb-label { font-size: 12px; font-weight: 700; color: var(--amber-dim); margin-bottom: 4px; }
+  .lb-team { display:flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; }
+  .lb-team.won { font-weight: 700; }
+  .lb-team.tbd { color: var(--chalk-dim); font-style: italic; }
+  .lb-score { font-family:'JetBrains Mono'; font-size: 12px; }
+  .lb-picks { font-size: 11px; color: var(--chalk-dim); margin-top: 4px; }
+  .lb-order { font-size: 13px; line-height: 1.7; }
+
   /* ---------- Head-to-head ---------- */
   .h2h-summary {
     display:grid; grid-template-columns: 1fr auto 1fr; gap: 18px;
@@ -599,6 +613,11 @@
 
     .chip { padding: 8px 12px; }
     .sub-tab-btn { padding: 10px 14px; }
+    /* Tab bars wrap onto extra rows on a phone, so every tab is visible (scrolling hid most of them). */
+    .tab-nav { flex-wrap: wrap; overflow-x: visible; gap: 0 2px; }
+    .tab-btn { padding: 9px 10px; font-size: 12px; }
+    .sub-tab-nav { flex-wrap: wrap; overflow-x: visible; }
+    .sub-tab-btn { padding: 9px 10px; font-size: 12px; }
     .link-btn { padding: 6px 2px; display: inline-block; }
     .ask-chip { padding: 8px 14px; }
     .trade-roster-chip { padding: 6px 11px; }
@@ -1053,6 +1072,14 @@
         <div class="accordion-body-inner">
           <div id="inSeasonStatus" class="trade-status">Checking for this season's live matchup data...</div>
 
+          <div class="table-card" id="liveBracketsCard" style="display:none;margin-bottom:16px;">
+            <div class="table-head">
+              <h2 id="liveBracketsTitle">Playoffs &amp; Toilet Bowl</h2>
+              <div class="hint">live from Sleeper &mdash; with next year&rsquo;s draft pick for every place (League Settings &rarr; Draft Order)</div>
+            </div>
+            <div id="liveBracketsBody"></div>
+          </div>
+
           <div class="table-card" id="inSeasonStandingsWrap" style="overflow-x:auto;display:none;margin-bottom:16px;">
             <div class="table-head">
               <h2>Live Standings</h2>
@@ -1091,6 +1118,17 @@
               <span id="matchupLinesLocked"></span><span id="matchupLinesRecord" style="display:block;margin-bottom:4px;"></span>
               Lines are a dashboard-only estimate, just for fun: about 90% Sleeper's projections for each team's current starters, 10% how those starters have scored in this league over the last two weeks, plus a small nudge from the all-time head-to-head. Standings and head-to-head on their own turned out to predict worse than a coin flip, so they carry little or no weight. Tested on every 2025 game: it picked the winner about 6 times in 10 and missed the margin by about 31 points on average — fantasy is noisy. Odds are fair odds (no bookmaker margin).
             </div>
+          </div>
+
+          <div class="table-card" id="prizeWatchCard" style="overflow-x:auto;display:none;margin-top:16px;">
+            <div class="table-head">
+              <h2 id="prizeWatchTitle">Prize Watch</h2>
+              <div class="hint">who&rsquo;s in line for each prize, completed weeks (amounts in League Settings &rarr; Prizes)</div>
+            </div>
+            <table>
+              <thead><tr><th style="text-align:left;cursor:default;">Prize</th><th>Amount</th><th style="text-align:left;cursor:default;">In line now</th><th style="text-align:left;cursor:default;">Details</th></tr></thead>
+              <tbody id="prizeWatchBody"></tbody>
+            </table>
           </div>
 
           <div id="seasonHighsWrap" style="display:none;margin-top:16px;">
@@ -1644,6 +1682,9 @@ const CURRENT_SEASON = {
   tradeDeadline: null,      // e.g. "2026-11-17T23:59:00"
   playoffStart: null,       // e.g. "2026-12-05T00:00:00"
   leagueFeeAmount: "$175",  // increased from $150 for 2026
+  // Prize pool (confirmed by the user 2026-11-22). Used by League Settings -> Prizes, Prize Watch and Ask.
+  prizes: { champion: 1575, regularSeason: 350, highScore: 175 },
+  regularSeasonWeeks: 14,   // Sleeper playoff_week_start 15 -> Weeks 1-14 are the regular season
   leagueFeeDeadline: null,  // e.g. "2026-08-17T23:59:00"
   draftOrder: [
     "Mike Gostlin", "Jazz Dhillon", "Stuart Duncan", "Ben Matsumoto",
@@ -1663,7 +1704,12 @@ const LEAGUE_SETTINGS = {
 
   roster: "<div class=\"settings-subhead\">Starting Lineup</div>\n<ul>\n<li><b>1</b> Quarterback (QB)</li>\n<li><b>2</b> Running Back (RB)</li>\n<li><b>2</b> Wide Receiver (WR)</li>\n<li><b>1</b> Tight End (TE)</li>\n<li><b>2</b> Flex (WR/RB/TE)</li>\n<li><b>1</b> Kicker (K)</li>\n<li><b>1</b> Defense (DEF)</li>\n</ul>\n<div class=\"settings-subhead\">Bench</div>\n<ul>\n<li><b>5</b> bench spots</li>\n</ul>\n<div class=\"settings-subhead\">Injured Reserve (IR)</div>\n<ul>\n<li><b>1</b> IR slot</li>\n<li>OUT players allowed on IR</li>\n<li>Suspended players allowed on IR</li>\n<li>NA, DNR/Holdout/Opt-out, and Doubtful players are <b>not</b> allowed on IR</li>\n</ul>",
   general: "<div class=\"settings-subhead\">League Format</div>\n<ul>\n<li>League type: <b>Keeper</b></li>\n<li><b>12</b> teams</li>\n<li>Keeper decisions due <b>1 week (7 days)</b> before the draft</li>\n</ul>\n<div class=\"settings-subhead\">Waivers</div>\n<ul>\n<li>Waiver type: <b>FAAB</b> (Free Agent Auction Budget) bidding</li>\n<li><b>$100</b> FAAB budget per season</li>\n<li>Dropped players stay on waivers for <b>1 day</b> before clearing to free agency</li>\n<li>Waivers process daily; final weekly clear is <b>Wednesdays at 3:00 AM EDT</b></li>\n</ul>\n<div class=\"settings-subhead\">Trades</div>\n<ul>\n<li><b>1-day</b> review period on pending trades</li>\n<li>Trade deadline: <b>Week 11</b></li>\n<li>Draft pick trading is <b>allowed</b></li>\n</ul>\n<div class=\"settings-subhead\">Playoffs</div>\n<ul>\n<li>Playoffs start <b>Week 15</b></li>\n<li><b>8</b> teams make the playoffs</li>\n<li>One week per playoff round</li>\n<li>Seeding: set by regular-season record; ties broken first by total points scored, then by total points scored against</li>\n<li>Non-playoff teams play in a separate <b>Consolation bracket</b></li>\n</ul>\n<div class=\"settings-subhead\">Transaction Rules</div>\n<ul>\n<li>Roster moves are <b>locked</b> until after the draft</li>\n<li>Bench players <b>can&rsquo;t be dropped</b> once their game has started</li>\n</ul>\n<div class=\"settings-subhead\">Competitive Lineup Rule (New for 2026)</div>\n<ul>\n<li>Each manager must submit their <b>highest-scoring reasonable lineup</b> every week.</li>\n<li>If a bench player is eligible for an empty starting spot, they <b>must be started</b>.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Review Committee (New for 2026)</div>\n<ul>\n<li>A 4-person committee reviews trades, but may only overturn one for <b>collusion</b>, a <b>deliberate tanking arrangement</b>, or a <b>rule violation</b> \u2014 not simple fairness disagreements.</li>\n<li>If a trade involves a Committee member, the other <b>3 Committee members</b> review it instead.</li>\n</ul>\n<div class=\"settings-subhead\">Toilet Bowl Punishment (New for 2026 \u2014 TBD)</div>\n<ul>\n<li>Not yet decided. The Committee will present punishment options for the league to vote on before the draft.</li>\n<li>Intent: a known consequence to reduce incentive for intentional losing.</li>\n</ul>",
-  prizes: "<div class=\"settings-subhead\">2026 Prize Pool &mdash; $2,100 (12 teams &times; $175 league fee)</div>\n<ul>\n<li><b>Champion</b> (wins the playoffs): <b>$1,575</b></li>\n<li><b>First place, regular season</b>: <b>$350</b></li>\n<li><b>Most points in one week</b>: <b>$175</b></li>\n</ul>",
+  prizes: (() => {
+    const p = CURRENT_SEASON.prizes, $ = n => '$' + n.toLocaleString('en-US');
+    return `<div class="settings-subhead">${CURRENT_SEASON.year} Prize Pool &mdash; ${$(p.champion + p.regularSeason + p.highScore)} (12 teams &times; ${CURRENT_SEASON.leagueFeeAmount} league fee)</div>\n<ul>\n` +
+      `<li><b>Champion</b> (wins the playoffs): <b>${$(p.champion)}</b></li>\n<li><b>First place, regular season</b>: <b>${$(p.regularSeason)}</b></li>\n` +
+      `<li><b>Most points in one week</b>: <b>${$(p.highScore)}</b></li>\n</ul>`;
+  })(),
   draftOrder: "<div class=\"settings-subhead\">From the 2027 Draft On (league vote, Nov 2026: 7&ndash;5)</div>\n<ul>\n<li>Draft order is set by the previous season&rsquo;s results, not a random draw.</li>\n<li><b>Pick 1:</b> the Toilet Bowl winner.</li>\n<li><b>Picks 2&ndash;4:</b> the rest of the Toilet Bowl, in order of finish.</li>\n<li><b>Picks 5&ndash;12:</b> the 8 playoff teams, in order of playoff finish (8th place picks 5th &hellip; the champion picks 12th).</li>\n</ul>\n<div class=\"settings-subhead\">How Every Place Is Decided</div>\n<ul>\n<li><b>Toilet Bowl</b> (the 4 non-playoff teams, no bye): <b>Week 15</b> &mdash; first round. <b>Week 16</b> &mdash; the first-round winners play for the Toilet Bowl title (picks 1&ndash;2); the first-round losers play each other (picks 3&ndash;4), and the loser of that game finishes <b>last in the league</b> and takes the punishment. Toilet Bowl teams have no game in Week 17.</li>\n<li><b>Playoffs</b> (8 teams): <b>Week 15</b> &mdash; quarterfinals. <b>Week 16</b> &mdash; semifinals, and the quarterfinal losers play each other. <b>Week 17</b> &mdash; the final (1st/2nd), 3rd-place game, 5th-place game and 7th-place game. So places 1&ndash;8 are all settled on the field.</li>\n<li>Why: an anti-tanking incentive &mdash; missing the playoffs never makes losing worth it, because winning the Toilet Bowl earns the first pick.</li>\n</ul>\n<div class=\"settings-subhead\">2026 Draft</div>\n<ul>\n<li>The 2026 order was set by the F1 Dutch Grand Prix result (Aug 23, 2026).</li>\n</ul>",
   goodToKnow: "<ul>\n<li><b>The Ask tab isn&rsquo;t AI</b> &mdash; it&rsquo;s a lookup tool that recognizes known question patterns (manager names, years, stats, rules). If it doesn&rsquo;t understand something, it says so rather than guessing.</li>\n<li><b>Live data</b> (this week&rsquo;s standings and scoreboard, the NFL ticker, and 2026+ draft results) is pulled live from Sleeper (and ESPN for the NFL ticker). If their systems are slow or briefly wrong, this dashboard will reflect that.</li>\n<li><b>Standings ties stay ties, on purpose.</b> If two teams are tied on both wins and points, they&rsquo;ll show at the same rank &mdash; not resolved by points against. Same logic as a regular-season NFL game itself being allowed to end in a tie.</li>\n<li><b>The NFL ticker uses an unofficial, undocumented ESPN source.</b> It could stop working without warning &mdash; that&rsquo;s a limitation of the source, not necessarily something broken here.</li>\n<li><b>The Trade Analyzer&rsquo;s compliance checker</b> automatically checks the year rule and pick-for-pick for the trade being built right now; the Pick Compliance tab tracks every completed trade and what each team holds. It can&rsquo;t verify no-side-deals at all &mdash; confirm that manually.</li>\n<li><b>Player and pick trade values</b> come from FantasyCalc, a third-party crowd-sourced site &mdash; a reference point, not an official or binding valuation.</li>\n<li><b>2012&ndash;2025 seasons are fully validated, start to finish, including playoffs.</b> 2026 is being added week by week as it's actually played &mdash; Stats, Head-to-Head, and Power Rankings for 2026 reflect completed weeks only, and won't have a final standings/champion until the season (playoffs included) actually finishes.</li>\n</ul>",
 };
@@ -3720,6 +3766,138 @@ async function renderSeasonTopPlayers(rosters, managerByRoster) {
   document.getElementById('seasonHighsWrap').style.display = '';
 }
 
+// Prize Watch: who is in line for each prize right now, from GAMES (completed weeks only).
+// Regular-season 1st = record (a tie is half a win), then points for -- the league's seeding rule.
+// Teams level on both share the lead (ties stay ties). High score counts every week played, playoffs too.
+function prizeWatchRows(season) {
+  const P = CURRENT_SEASON.prizes, money = n => '$' + n.toLocaleString('en-US');
+  const reg = GAMES.filter(g => g.season === season && g.type === 'regular');
+  if (!reg.length) return [];
+  const T = {};
+  reg.forEach(g => [[g.mA, g.sA, g.sB], [g.mB, g.sB, g.sA]].forEach(([m, s, o]) => {
+    const r = T[m] = T[m] || { m, w: 0, l: 0, t: 0, pf: 0 }; r[s > o ? 'w' : s < o ? 'l' : 't']++; r.pf += s;
+  }));
+  const rows = Object.values(T).map(r => ({ ...r, pts: r.w + r.t / 2 })).sort((a, b) => b.pts - a.pts || b.pf - a.pf);
+  const lead = rows.filter(r => r.pts === rows[0].pts && Math.abs(r.pf - rows[0].pf) < 0.005);
+  const sameRecord = rows.filter(r => r.pts === rows[0].pts && !lead.includes(r));
+  const oneBack = rows.filter(r => r.pts < rows[0].pts && rows[0].pts - r.pts <= 1);
+  const weeksLeft = Math.max(0, CURRENT_SEASON.regularSeasonWeeks - Math.max(...reg.map(g => g.week)));
+  const finished = getFinishedSeasons().has(season);
+  const regDetail = weeksLeft === 0 ? 'Regular season over &mdash; prize won.' :
+    `${weeksLeft} week${weeksLeft === 1 ? '' : 's'} left.` +
+    (sameRecord.length ? ` Also ${recordStr(rows[0].w, rows[0].l, rows[0].t)}: ${sameRecord.map(r => r.m).join(', ')} (behind on points for).` : '') +
+    (oneBack.length ? ` One game back: ${oneBack.map(r => r.m).join(', ')}.` : '');
+  const top = seasonTopTeamScores(season, 2);
+  const wk = r => `${r.type === 'playoff' ? 'playoff ' : ''}Week ${r.week}`;
+  const champ = RAW.find(d => d.season === season && d.category === 'Playoff Standings' && d.value === 1);
+  return [
+    { prize: 'Champion', amount: money(P.champion), who: finished && champ ? champ.manager : '&mdash;',
+      detail: finished && champ ? 'Won the final.' : 'Decided in the Week 17 final.' },
+    { prize: 'First place, regular season', amount: money(P.regularSeason), who: lead.map(r => r.m).join(' &amp; '),
+      detail: `${recordStr(lead[0].w, lead[0].l, lead[0].t)}, ${fmt(lead[0].pf, 1)} points for. ${regDetail}` },
+    { prize: 'Most points in one week', amount: money(P.highScore), who: top.length ? top[0].manager : '&mdash;',
+      detail: top.length ? `${fmt(top[0].score, 2)} in ${wk(top[0])}.` + (top[1] ? ` Next best: ${fmt(top[1].score, 2)} (${top[1].manager}, ${wk(top[1])}).` : '') +
+        (finished ? ' Season over &mdash; prize won.' : '') : '' },
+  ];
+}
+
+function renderPrizeWatch() {
+  const season = CURRENT_SEASON.year, rows = prizeWatchRows(season);
+  if (!rows.length) return;
+  document.getElementById('prizeWatchTitle').textContent = `Prize Watch, ${season}`;
+  document.getElementById('prizeWatchBody').innerHTML = rows.map(r => `<tr>
+      <td style="text-align:left;font-weight:700;">${r.prize}</td>
+      <td style="font-family:'JetBrains Mono';">${r.amount}</td>
+      <td style="text-align:left;white-space:nowrap;">${r.who}</td>
+      <td style="text-align:left;font-size:12px;color:var(--chalk-dim);">${r.detail}</td>
+    </tr>`).join('');
+  document.getElementById('prizeWatchCard').style.display = '';
+}
+
+// Live playoff + Toilet Bowl brackets, from Sleeper's winners_bracket / losers_bracket. Pure: builds the
+// model; no DOM. Each round r is played in week (start + r - 1) -- checked against 2025, where the
+// 4-team Toilet Bowl ran Weeks 15-16 and the 8-team playoffs Weeks 15-17. Draft picks per the Draft
+// Order rule (from 2027): Toilet Bowl place k -> pick k; playoff place k -> pick (teams + 1 - k).
+function liveBracketModel(winners, losers, start, managerByRoster, pointsByWeek, teams) {
+  const picks = {};
+  const build = (games, isWinners) => {
+    const label = {}, count = {};
+    const baseName = g => {
+      if (isWinners) {
+        if (g.p) return ({ 1: 'Final', 3: '3rd-place game', 5: '5th-place game', 7: '7th-place game' })[g.p] || `Game for ${g.p}th`;
+        if (g.r === 1) return 'Quarterfinal';
+        return g.t1_from && g.t1_from.l ? '5th-8th place semifinal' : 'Semifinal';
+      }
+      if (g.p === 1) return 'Toilet Bowl final';
+      if (g.p === 3) return 'Last-place game';
+      return g.r === 1 ? 'Toilet Bowl round 1' : `Toilet Bowl round ${g.r}`;
+    };
+    games.forEach(g => { const b = baseName(g); count[b] = (count[b] || 0) + 1; });
+    const seen = {};
+    games.forEach(g => { const b = baseName(g); seen[b] = (seen[b] || 0) + 1; label[g.m] = count[b] > 1 ? (/\d$/.test(b) ? `${b}, game ${seen[b]}` : `${b} ${seen[b]}`) : b; });
+    const pickFor = (place) => isWinners ? teams + 1 - place : place;
+    const rounds = {};
+    games.forEach(g => {
+      const week = start + g.r - 1;
+      const side = (rid, from) => rid ? {
+        name: managerByRoster[rid] || `Roster ${rid}`,
+        score: pointsByWeek[week] && pointsByWeek[week][rid] !== undefined ? pointsByWeek[week][rid] : null,
+        won: g.w === rid, lost: g.l === rid, tbd: false,
+      } : { name: from ? `${from.w ? 'Winner' : 'Loser'} of ${label[from.w || from.l]}` : 'TBD', score: null, won: false, lost: false, tbd: true };
+      let pickNote = '';
+      if (g.p) {
+        const pw = pickFor(g.p), pl = pickFor(g.p + 1);
+        pickNote = `Winner: ${isWinners ? `${g.p}${({ 1: 'st', 3: 'rd' })[g.p] || 'th'} place` : g.p === 1 ? 'Toilet Bowl champion' : `${8 + g.p}th place`} &middot; next year&rsquo;s picks ${pw} &amp; ${pl}` +
+          (!isWinners && g.p === 3 ? ' &middot; loser finishes last and takes the punishment' : '');
+        if (g.w) picks[pw] = managerByRoster[g.w];
+        if (g.l) picks[pl] = managerByRoster[g.l];
+      }
+      (rounds[week] = rounds[week] || []).push({ m: g.m, label: label[g.m], teams: [side(g.t1, g.t1_from), side(g.t2, g.t2_from)], pickNote, final: !!g.w });
+    });
+    return Object.keys(rounds).map(Number).sort((a, b) => a - b).map(w => ({ week: w, games: rounds[w].sort((a, b) => a.m - b.m) }));
+  };
+  return {
+    sections: [{ name: 'Playoffs', rounds: build(winners || [], true) }, { name: 'Toilet Bowl', rounds: build(losers || [], false) }].filter(x => x.rounds.length),
+    picks,
+  };
+}
+
+function liveBracketHtml(model, nextSeason, teams) {
+  const team = t => `<div class="lb-team${t.won ? ' won' : ''}${t.tbd ? ' tbd' : ''}"><span>${t.name}</span><span class="lb-score">${t.score === null ? '' : fmt(t.score, 2)}</span></div>`;
+  const sections = model.sections.map(sec => `<div class="lb-section"><h3>${sec.name}</h3><div class="lb-grid">` +
+    sec.rounds.map(r => `<div><div class="lb-week">Week ${r.week}</div>` +
+      r.games.map(g => `<div class="lb-game"><div class="lb-label">${g.label}${g.final ? '' : ' <span style="font-weight:400;color:var(--chalk-dim);">&middot; not final</span>'}</div>${team(g.teams[0])}${team(g.teams[1])}${g.pickNote ? `<div class="lb-picks">${g.pickNote}</div>` : ''}</div>`).join('') +
+      '</div>').join('') + '</div></div>').join('');
+  const decided = Object.keys(model.picks).length;
+  const order = `<div class="lb-section"><h3>${nextSeason} Draft Order${decided < teams ? ' so far' : ''}</h3><div class="lb-order">` +
+    Array.from({ length: teams }, (_, i) => `${i + 1}. ${model.picks[i + 1] || '<span style="color:var(--chalk-dim);">&mdash;</span>'}`).join(' &nbsp;&middot;&nbsp; ') +
+    `</div><div class="lb-picks">Set by the brackets above (Draft Order rule); &mdash; = not decided yet.</div></div>`;
+  return sections + order;
+}
+
+async function renderLiveBrackets(leagueId, currentWeek) {
+  const L = `league/${leagueId}`;
+  const [league, users, rosters, winners, losers] = await Promise.all([L, `${L}/users`, `${L}/rosters`, `${L}/winners_bracket`, `${L}/losers_bracket`].map(x => fetchSleeperJson(x)));
+  const card = document.getElementById('liveBracketsCard');
+  const start = league && league.settings && league.settings.playoff_week_start;
+  if (!start || currentWeek < start || !Array.isArray(winners) || !winners.length) { card.style.display = 'none'; return; }
+  const userName = {}; users.forEach(u => { userName[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
+  const managerByRoster = {}; rosters.forEach(r => { managerByRoster[r.roster_id] = userName[r.owner_id] || `Roster ${r.roster_id}`; });
+  const lastRound = Math.max(...winners.map(g => g.r), ...(losers || []).map(g => g.r));
+  const weeks = []; for (let w = start; w <= Math.min(currentWeek, start + lastRound - 1); w++) weeks.push(w);
+  const pointsByWeek = {};
+  (await Promise.all(weeks.map(w => fetchSleeperJson(`${L}/matchups/${w}`)))).forEach((ms, i) => {
+    pointsByWeek[weeks[i]] = {}; (ms || []).forEach(m => { pointsByWeek[weeks[i]][m.roster_id] = m.points; });
+  });
+  const teams = rosters.length;
+  document.getElementById('liveBracketsTitle').textContent = `${league.season} Playoffs & Toilet Bowl`;
+  document.getElementById('liveBracketsBody').innerHTML = liveBracketHtml(liveBracketModel(winners, losers, start, managerByRoster, pointsByWeek, teams), Number(league.season) + 1, teams);
+  card.style.display = '';
+}
+
+// This week's live matchups, kept for Ask ("who is Jazz playing this week"). Set by the scoreboard.
+let LIVE_WEEK = null;
+
 async function initInSeasonScoreboard() {
   const statusEl = document.getElementById('inSeasonStatus');
   try {
@@ -3744,6 +3922,7 @@ async function initInSeasonScoreboard() {
     const week = state.week;
     renderWeekInHistory(week); // pure local computation from GAMES, no extra fetch needed
     renderSeasonTopScores();   // likewise
+    renderPrizeWatch();        // likewise
 
     const [matchups, rosters, users] = await Promise.all([
       fetchSleeperJson(`league/${SLEEPER_LEAGUE_ID}/matchups/${week}`),
@@ -3754,6 +3933,7 @@ async function initInSeasonScoreboard() {
     const userById = {}; users.forEach(u => { userById[u.user_id] = SLEEPER_USERNAME_TO_MANAGER[u.display_name] || u.display_name; });
     const managerByRoster = {}; rosters.forEach(r => { managerByRoster[r.roster_id] = userById[r.owner_id] || `Roster ${r.roster_id}`; });
     renderSeasonTopPlayers(rosters, managerByRoster).catch(e => console.warn('Top players unavailable:', e));
+    renderLiveBrackets(SLEEPER_LEAGUE_ID, week).catch(e => console.warn('Brackets unavailable:', e));
 
     // Live Standings: reuses the rosters/users fetch above; rendered BEFORE the matchups check because
     // standings (Sleeper's server-computed roster.settings) don't depend on this week's matchups posting.
@@ -3817,6 +3997,7 @@ async function initInSeasonScoreboard() {
     });
 
     const pairs = Object.values(byMatchup).filter(p => p.length === 2);
+    LIVE_WEEK = pairs.length ? { week, pairs: pairs.map(([a, b]) => [managerByRoster[a.roster_id], managerByRoster[b.roster_id], a.points || 0, b.points || 0]) } : null;
     if (!pairs.length) {
       statusEl.textContent = `Connected to Sleeper, but Week ${week}'s matchups aren't paired up yet.`;
       statusEl.className = 'trade-status';
@@ -4324,7 +4505,7 @@ function questionModifiers(lower) {
     // predictions, the Toilet Bowl. A team-score answer to these would be confidently wrong.
     noData: /\b(kickers?|quarterbacks?|qbs?|running backs?|rbs?|receivers?|wrs?|tight ends?|tes|defen[cs]es?|dst|players?)\b/.test(lower) &&
         /\b(game|games|week|weekly|matchup)\b|\bwk\s*\d/.test(lower) ||
-      /\bbench (points|pts|score|scores|scoring|total)\b|\b(waiver|faab|free.agent) (pickups?|claims?|adds?|moves?|bids?|acquisitions?)\b|\b(most|fewest|how many) (waiver|faab|free.agent)? ?(pickups|claims|moves|trades|transactions)\b|\bhow many trades\b|\bpicked up\b|\bwaiver wire\b|\bon waivers\b|\bwill\b.*\b(score|win|beat|lose|make|miss|clinch|finish|end up)\b|\b(going to|gonna|predict(ion|ed)?)\b.*\b(score|win|beat|lose|make|miss|clinch|finish)\b|\bwho wins\b(?!.*\b(most|more|usually|often)\b)|\bnext week\b|\btoilet bowl\b.*\b(won|win|winner|lost|loser)\b|\b(won|win|winner|lost|loser)\b.*\btoilet bowl\b/.test(lower),
+      /\bbench (points|pts|score|scores|scoring|total)\b|\b(waiver|faab|free.agent) (pickups?|claims?|adds?|moves?|bids?|acquisitions?)\b|\b(most|fewest|how many) (waiver|faab|free.agent)? ?(pickups|claims|moves|trades|transactions)\b|\bhow many trades\b|\bpicked up\b|\bwaiver wire\b|\bon waivers\b|\bwill\b.*\b(score|win|beat|lose|make|miss|clinch|finish|end up)\b|\b(going to|gonna|predict(ion|ed)?)\b.*\b(score|win|beat|lose|make|miss|clinch|finish)\b|\bwho wins\b(?!.*\b(most|more|usually|often)\b)|\bnext week\b|\btoilet bowl\b.*\b(lost|loser)\b|\b(lost|loser)\b.*\btoilet bowl\b|\btoilet bowl\b.*\b(by (more|less) than|margin)\b/.test(lower),
     never: /\bnever\b|\b(has|have)n'?t (ever )?won\b|\bwithout (a |any )?(title|championship)\b/.test(lower),
     drought: /\bdrought\b|\blongest (time )?without\b/.test(lower),
     losing: /\blos(ing|s) (streak|run)\b|\blosses in a row\b|\bstraight losses\b|\bskid\b|\brun of losses\b/.test(lower),
@@ -4397,6 +4578,47 @@ function askAnswer(raw) {
   const titlesOf = m => RAW.filter(d => d.manager === m && d.category === 'Playoff Standings' && d.value === 1).map(d => d.season).sort((a, b) => a - b);
   // Players' weekly points aren't stored (only teams'), so "Josh Allen's best game" can't be answered.
   if (q.noData || (player && (q.week || q.single || q.scoreRecord))) return null;
+  // "Best/worst record", "last place" with no year and no career word mean THIS season's standings
+  // (like "who is in first place"); "all time"/"career"/"ever" keep the career answer.
+  const careerWords = /\b(all.time|career|ever|history|historically)\b/;
+  const latestRawSeason = Math.max(...RAW.map(d => d.season));
+  const currentStandingsQ = !mgrs.length && !yr && !careerWords.test(lower) && /\b(best|worst) record\b|\blast place\b|\bin last\b|\bbottom of the standings\b/.test(lower);
+
+  // Who a manager plays this week -- only from the live scoreboard (LIVE_WEEK); otherwise no answer.
+  if (mgrs.length === 1 && /\b(playing|play|plays|facing|face|opponent|matchup|going against|up against)\b/.test(lower) &&
+      /\b(this week|today|tonight|right now|currently|now)\b/.test(lower)) {
+    const live = typeof LIVE_WEEK !== 'undefined' ? LIVE_WEEK : null;
+    const hit = live && live.pairs.find(p => p[0] === mgrs[0] || p[1] === mgrs[0]);
+    if (!hit) return null;
+    const mine = hit[0] === mgrs[0] ? 0 : 1, opp = hit[1 - mine];
+    const sm = hit[2 + mine], so = hit[3 - mine];
+    return `Week ${live.week}: ${mgrs[0]} vs ${opp}` + (sm || so ? ` -- ${fmt(sm, 2)} to ${fmt(so, 2)} so far (live from Sleeper).` : ' (live from Sleeper).');
+  }
+
+  // Prizes / payouts (CURRENT_SEASON.prizes). Not "cost to join" -- that's the fee.
+  if (/\b(prizes?|payouts?|prize money|winnings|purse)\b|how much (does|do|did|will) (the )?(champion|winner|first place|1st place)|\b(champion|winner) (gets?|wins?|makes?|takes? home)\b/.test(lower) &&
+      !/\b(cost|join|fee|dues)\b/.test(lower) && !mgrs.length && !player && CURRENT_SEASON.prizes) {
+    const P = CURRENT_SEASON.prizes, money = n => '$' + n.toLocaleString('en-US');
+    return `${CURRENT_SEASON.year} prizes (${money(P.champion + P.regularSeason + P.highScore)} pot): champion ${money(P.champion)}; first place in the regular season ${money(P.regularSeason)}; most points in one week ${money(P.highScore)}.`;
+  }
+
+  // "Who won the championship" with no year = the most recent champion (not the career title leaders).
+  if (!yr && !mgrs.length && /\bwho won the (championship|title|final|finals)\b/.test(lower) && !careerWords.test(lower) && !/\b(most|times|how many)\b/.test(lower)) {
+    const last = latestFinishedSeason();
+    const champ = RAW.find(d => d.season === last && d.category === 'Playoff Standings' && d.value === 1);
+    if (champ) return `${champ.manager} won the ${last} championship (playing as "${champ.team}"), the most recent one.`;
+  }
+
+  // Toilet Bowl winner. The current format (bottom 4, winners advance; the Toilet Bowl winner finishes
+  // 9th, the last-place game's loser 12th) started in 2025 -- earlier consolation brackets differed, so no answer before then.
+  if (/toilet bowl/.test(lower) && /\b(won|win|wins|winner|winners|champion)\b/.test(lower) && !/punish/.test(lower) && !mgrs.length) {
+    if (/\bmost\b|how many|\btimes\b|\bever\b|all.time/.test(lower)) return null; // only 2025 on record -- no career count
+    const season = yr || latestFinishedSeason();
+    if (season < 2025) return null;
+    const placed = n => RAW.find(d => d.season === season && d.category === 'Playoff Standings' && d.value === n);
+    if (!getFinishedSeasons().has(season) || !placed(9)) return `The ${season} Toilet Bowl isn't decided yet -- it's played in Weeks 15-16.`;
+    return `${placed(9).manager} won the ${season} Toilet Bowl (9th overall).` + (placed(12) ? ` ${placed(12).manager} lost the last-place game and finished 12th.` : '');
+  }
 
   // ===== Precise answers: these handle the meaning-changing words above, and run first. =====
 
@@ -4431,10 +4653,12 @@ function askAnswer(raw) {
 
   // Points against (regular season), career or one season.
   if (q.against && !q.week && mgrs.length <= 1) {
-    const sum = m => RAW.filter(d => d.manager === m && d.category === 'Pts Against' && (!yr || d.season === yr)).reduce((a, b) => a + b.value, 0);
+    // "Who leads the league in points against" = this season, not career.
+    const paYr = yr || (!mgrs.length && !careerWords.test(lower) && /\b(leads?|leading) the league\b|\bleague leader\b/.test(lower) ? latestRawSeason : null);
+    const sum = m => RAW.filter(d => d.manager === m && d.category === 'Pts Against' && (!paYr || d.season === paYr)).reduce((a, b) => a + b.value, 0);
     const rows = managers.map(m => ({ m, v: sum(m) })).sort((a, b) => b.v - a.v);
-    const label = `points against${yr ? ` in ${yr}` : ' (career, regular season)'}`;
-    if (!yr && !mgrs.length && /\b(in a|single|one) season\b/.test(lower)) {
+    const label = `points against${paYr ? ` in ${paYr}` : ' (career, regular season)'}`;
+    if (!paYr && !mgrs.length && /\b(in a|single|one) season\b/.test(lower)) {
       const seasons = RAW.filter(d => d.category === 'Pts Against' && finishedSet.has(d.season)).sort((a, b) => least ? a.value - b.value : b.value - a.value);
       return `${least ? 'Fewest' : 'Most'} points against in a single season (regular season, finished seasons): ` +
         seasons.slice(0, 3).map(d => `${d.manager} ${d.season} -- ${fmt(d.value, 1)}`).join('; ') + '.';
@@ -4621,8 +4845,9 @@ function askAnswer(raw) {
       const pick = DRAFTS[yr] && DRAFTS[yr].picks.find(p => p.player === player);
       return `Nobody kept ${player} in ${yr}.` + (pick ? ` ${managerForTeam(yr, pick.team)} drafted ${player} in Round ${pick.round}, Pick ${pick.pick}.` : '');
     }
-    return rows.length ? `${player} has been kept ${rows.length} time${rows.length === 1 ? '' : 's'}: ` + rows.map(k => `${k.year} by ${k.manager} (Round ${k.round})`).join(', ') + '.'
-      : `${player} has never been kept in this league.`;
+    const costNote = /\bcost\b|next (year|season)/.test(lower) ? ` Next year's keeper cost for every rostered player is on the Keeper Compliance tab (under Trades & Keepers).` : '';
+    return (rows.length ? `${player} has been kept ${rows.length} time${rows.length === 1 ? '' : 's'}: ` + rows.map(k => `${k.year} by ${k.manager} (Round ${k.round})`).join(', ') + '.'
+      : `${player} has never been kept in this league.`) + costNote;
   }
 
   // A player's trade value (FantasyCalc, loaded by the Trade Analyzer).
@@ -4867,7 +5092,7 @@ function askAnswer(raw) {
   for (const [key, aliases] of Object.entries(CAREER_STAT_ALIASES)) {
     if (aliases.some(a => lower.includes(a))) { careerStatKey = key; break; }
   }
-  if (careerStatKey && !yr) {
+  if (careerStatKey && !yr && !currentStandingsQ) {
     // Direction matters: least/fewest/lowest/worst picks from the bottom (this once always returned
     // the MOST). A named manager's rank is always relative to "most" (#1 = most), whatever the wording.
     const wantsLeast = /least|fewest|lowest|worst|bottom/.test(lower);
@@ -4986,16 +5211,18 @@ function askAnswer(raw) {
 
   // Standings leader for one season ("who has the most wins this season", "who is in first place").
   // Ties stay ties, same as Live Standings: sorted by wins then points for, and anyone level on both shares the lead.
-  if (!mgrs.length && /(most wins|won the most games|best record|first place|in first|standings leader|leading the league|top of the standings)/.test(lower) &&
-      (yr || /first place|in first|standings leader|leading the league|top of the standings/.test(lower))) {
-    const season = yr || Math.max(...RAW.map(d => d.season));
+  const bottomQ = /\bworst record\b|\blast place\b|\bin last\b|\bbottom of the standings\b/.test(lower);
+  if (currentStandingsQ || (!mgrs.length && yr && bottomQ && !careerWords.test(lower)) || (!mgrs.length && /(most wins|won the most games|best record|first place|in first|standings leader|leading the league|top of the standings)/.test(lower) &&
+      (yr || /first place|in first|standings leader|leading the league|top of the standings/.test(lower)))) {
+    const season = yr || latestRawSeason;
     const rows = managers.map(m => ({ m, w: valueFor(m, season, 'Wins'), l: valueFor(m, season, 'Losses'), t: tiesFor(m, season), pf: valueFor(m, season, 'Pts For') }))
       .filter(r => r.w !== null).map(r => ({ ...r, pct: winPctOf(r.w, r.l, r.t) })).sort((a, b) => b.pct - a.pct || b.pf - a.pf);
     if (rows.length) {
-      const top = rows.filter(r => r.pct === rows[0].pct && r.pf === rows[0].pf);
+      const ref = bottomQ ? rows[rows.length - 1] : rows[0];
+      const top = rows.filter(r => r.pct === ref.pct && r.pf === ref.pf);
       const weeks = GAMES.filter(g => g.season === season && g.type === 'regular').reduce((mx, g) => Math.max(mx, g.week), 0);
       const through = getFinishedSeasons().has(season) ? 'regular season' : `through Week ${weeks}`;
-      return `${season} standings leader (${through}): ${top.map(r => `${r.m}, ${recordStr(r.w, r.l, r.t)} with ${fmt(r.pf, 1)} points for`).join(' & ')}.`;
+      return `${season} ${bottomQ ? 'last place' : 'standings leader'} (${through}): ${top.map(r => `${r.m}, ${recordStr(r.w, r.l, r.t)} with ${fmt(r.pf, 1)} points for`).join(' & ')}.`;
     }
   }
 
@@ -5935,6 +6162,28 @@ function renderRosters2025() {
 }
 
 initRosters2025();
+
+// Links to a tab or sub-tab: ...TAS-Dashboard/#median opens Stats -> What If: Median. The hash is any
+// main tab (data-tab) or sub-tab (data-subtab / data-subtab2 / data-subtab3) name; clicking a tab
+// keeps the address bar in step so it can be copied and shared.
+const TAB_FOR_SUBNAV = { statsSubNav: 'stats', rostersSubNav: 'rosters', tradeKeepSubNav: 'tradekeep' };
+function openTabFromHash() {
+  const key = decodeURIComponent((location.hash || '').slice(1)).toLowerCase();
+  if (!key) return;
+  const main = document.querySelector(`.tab-btn[data-tab="${CSS.escape(key)}"]`);
+  if (main) { main.click(); return; }
+  const sub = document.querySelector(`[data-subtab="${CSS.escape(key)}"],[data-subtab2="${CSS.escape(key)}"],[data-subtab3="${CSS.escape(key)}"]`);
+  if (!sub) return;
+  const parentTab = TAB_FOR_SUBNAV[sub.closest('.sub-tab-nav').id];
+  if (parentTab) document.querySelector(`.tab-btn[data-tab="${parentTab}"]`).click();
+  sub.click();
+}
+document.querySelectorAll('.tab-btn, .sub-tab-btn').forEach(btn => btn.addEventListener('click', () => {
+  const key = btn.dataset.tab || btn.dataset.subtab || btn.dataset.subtab2 || btn.dataset.subtab3;
+  if (key && location.hash !== '#' + key) history.replaceState(null, '', key === 'current' ? location.pathname + location.search : '#' + key);
+}));
+window.addEventListener('hashchange', openTabFromHash);
+openTabFromHash();
 }
 __appInit().catch(showAppLoadError);
 
