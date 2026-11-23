@@ -765,10 +765,7 @@
     <button class="tab-btn" data-tab="recap">Weekly Recap</button>
     <button class="tab-btn" data-tab="stats">Stats</button>
     <button class="tab-btn" data-tab="rosters">Rosters &amp; Draft</button>
-    <button class="tab-btn" data-tab="trade">Trade Analyzer</button>
-    <button class="tab-btn" data-tab="picks">Pick Compliance</button>
-    <button class="tab-btn" data-tab="keepers">Keeper Compliance</button>
-    <button class="tab-btn" data-tab="median">What If: Median</button>
+    <button class="tab-btn" data-tab="tradekeep">Trades &amp; Keepers</button>
     <button class="tab-btn" data-tab="settings">League Settings</button>
     <button class="tab-btn" data-tab="ask">Ask</button>
   </div>
@@ -780,6 +777,7 @@
     <button class="sub-tab-btn stats-subtab-btn" data-subtab2="h2h">Head-to-Head</button>
     <button class="sub-tab-btn stats-subtab-btn" data-subtab2="power">Power Rankings</button>
     <button class="sub-tab-btn stats-subtab-btn" data-subtab2="playoffs">Playoffs</button>
+    <button class="sub-tab-btn stats-subtab-btn" data-subtab2="median">What If: Median</button>
   </div>
 
   <div id="seasonTab" class="tab-panel">
@@ -990,6 +988,36 @@
     <div id="playoffBracket"></div>
 
     <footer><span id="playoffRangeLabel">Playoff bracket data covers 2012–2025</span>. Consolation-bracket structure changed in 2025 (an extra round moved earlier) — the labels below reflect that season's actual game groupings, not a fixed template.</footer>
+  </div>
+
+  <div id="medianTab" class="tab-panel" style="display:none;">
+    <div class="ask-disclaimer">
+      <ul>
+        <li><b>A what-if only.</b> This runs alongside the real league and changes nothing &mdash; real standings, playoffs and payouts still use the actual League Settings.</li>
+        <li><b>The idea:</b> each week a team earns 1 point for beating its opponent, and a second point for scoring above that week's league median &mdash; up to 2 points a week. Sim Pts is the running total (head-to-head + median); Sim Record shows the same thing as wins and losses, with each week counting as two games.</li>
+        <li><b>Median:</b> the middle score of all 12 teams that week (the average of the 6th and 7th highest), so exactly half the league beats it. A score equal to the median, or a head-to-head tie, counts as a tie.</li>
+        <li>Regular-season weeks only, and only weeks that are final. Sim standings are sorted by Sim Pts, then points for; teams still level share a rank.</li>
+      </ul>
+    </div>
+    <div style="margin:0 0 12px;"><select id="medianSeasonSelect"></select></div>
+    <div class="table-card" style="overflow-x:auto;">
+      <div class="table-head">
+        <h2 id="medianStandingsTitle">Median Standings</h2>
+        <div class="hint" id="medianStandingsHint"></div>
+      </div>
+      <table>
+        <thead><tr><th>Sim Rank</th><th style="text-align:left;cursor:default;">Manager</th><th title="1 for a head-to-head win + 1 for beating the median; ties are half">Sim Pts</th><th>Sim Record</th><th>Head-to-Head</th><th>vs Median</th><th>Pts For</th><th>Actual Rank</th><th>Change</th></tr></thead>
+        <tbody id="medianStandingsBody"></tbody>
+      </table>
+    </div>
+    <div class="table-card" style="overflow-x:auto;margin-top:16px;">
+      <div class="table-head">
+        <h2 id="medianWeeklyTitle">Week by Week vs the Median</h2>
+        <div class="hint">green = above the median (+1), red = below; W/L/T = head-to-head result</div>
+      </div>
+      <table id="medianWeeklyTable"></table>
+    </div>
+    <footer>Actual Rank is the real regular-season order by record, then points for, through the same weeks. Change = how many places a team would move under the median rule.</footer>
   </div>
 
   </div>
@@ -1302,7 +1330,15 @@
 
   
 
-  <div id="tradeTab" class="tab-panel" style="display:none;">
+  <div id="tradeKeepTab" class="tab-panel" style="display:none;">
+
+  <div class="sub-tab-nav" id="tradeKeepSubNav">
+    <button class="sub-tab-btn tk-subtab-btn active" data-subtab3="trade">Trade Analyzer</button>
+    <button class="sub-tab-btn tk-subtab-btn" data-subtab3="picks">Pick Compliance</button>
+    <button class="sub-tab-btn tk-subtab-btn" data-subtab3="keepers">Keeper Compliance</button>
+  </div>
+
+  <div id="tradeTab" class="tab-panel">
     <div class="ask-disclaimer">
       <ul>
         <li>Player values come live from <b>FantasyCalc</b>, a third-party crowd-sourced site — not official, not gospel, just a reference point.</li>
@@ -1387,11 +1423,6 @@
     <footer>Trade values are a third-party estimate for discussion, not a binding ruling — the Commissioner's Committee has final say, especially where draft pick keeper rules apply.</footer>
   </div>
 
-  <div id="settingsTab" class="tab-panel" style="display:none;">
-    <div id="settingsAccordion"></div>
-    <footer>League Settings · update this tab any time the rules change</footer>
-  </div>
-
   <div id="picksTab" class="tab-panel" style="display:none;">
     <div class="ask-disclaimer">
       <ul>
@@ -1436,34 +1467,11 @@
     <footer>Pick used is a pick the team holds in that round, its own or one it acquired. A keeper still counts toward the 2-picks-in-Rounds-1&ndash;5 rule.</footer>
   </div>
 
-  <div id="medianTab" class="tab-panel" style="display:none;">
-    <div class="ask-disclaimer">
-      <ul>
-        <li><b>A what-if only.</b> This runs alongside the real league and changes nothing &mdash; real standings, playoffs and payouts still use the actual League Settings.</li>
-        <li><b>The idea:</b> each week a team earns 1 point for beating its opponent, and a second point for scoring above that week's league median &mdash; up to 2 points a week. Sim Pts is the running total (head-to-head + median); Sim Record shows the same thing as wins and losses, with each week counting as two games.</li>
-        <li><b>Median:</b> the middle score of all 12 teams that week (the average of the 6th and 7th highest), so exactly half the league beats it. A score equal to the median, or a head-to-head tie, counts as a tie.</li>
-        <li>Regular-season weeks only, and only weeks that are final. Sim standings are sorted by Sim Pts, then points for; teams still level share a rank.</li>
-      </ul>
-    </div>
-    <div style="margin:0 0 12px;"><select id="medianSeasonSelect"></select></div>
-    <div class="table-card" style="overflow-x:auto;">
-      <div class="table-head">
-        <h2 id="medianStandingsTitle">Median Standings</h2>
-        <div class="hint" id="medianStandingsHint"></div>
-      </div>
-      <table>
-        <thead><tr><th>Sim Rank</th><th style="text-align:left;cursor:default;">Manager</th><th title="1 for a head-to-head win + 1 for beating the median; ties are half">Sim Pts</th><th>Sim Record</th><th>Head-to-Head</th><th>vs Median</th><th>Pts For</th><th>Actual Rank</th><th>Change</th></tr></thead>
-        <tbody id="medianStandingsBody"></tbody>
-      </table>
-    </div>
-    <div class="table-card" style="overflow-x:auto;margin-top:16px;">
-      <div class="table-head">
-        <h2 id="medianWeeklyTitle">Week by Week vs the Median</h2>
-        <div class="hint">green = above the median (+1), red = below; W/L/T = head-to-head result</div>
-      </div>
-      <table id="medianWeeklyTable"></table>
-    </div>
-    <footer>Actual Rank is the real regular-season order by record, then points for, through the same weeks. Change = how many places a team would move under the median rule.</footer>
+  </div>
+
+  <div id="settingsTab" class="tab-panel" style="display:none;">
+    <div id="settingsAccordion"></div>
+    <footer>League Settings · update this tab any time the rules change</footer>
   </div>
 
   <div id="recapTab" class="tab-panel" style="display:none;">
@@ -2725,10 +2733,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('currentSeasonTab').style.display = tab === 'current' ? '' : 'none';
     document.getElementById('settingsTab').style.display = tab === 'settings' ? '' : 'none';
-    document.getElementById('tradeTab').style.display = tab === 'trade' ? '' : 'none';
-    document.getElementById('picksTab').style.display = tab === 'picks' ? '' : 'none';
-    document.getElementById('keepersTab').style.display = tab === 'keepers' ? '' : 'none';
-    document.getElementById('medianTab').style.display = tab === 'median' ? '' : 'none';
+    document.getElementById('tradeKeepTab').style.display = tab === 'tradekeep' ? '' : 'none';
     document.getElementById('recapTab').style.display = tab === 'recap' ? '' : 'none';
     document.getElementById('askTab').style.display = tab === 'ask' ? '' : 'none';
     document.getElementById('rostersTab').style.display = tab === 'rosters' ? '' : 'none';
@@ -2736,9 +2741,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-document.querySelectorAll('.sub-tab-btn:not(.stats-subtab-btn)').forEach(btn => {
+document.querySelectorAll('#rostersSubNav .sub-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.sub-tab-btn:not(.stats-subtab-btn)').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#rostersSubNav .sub-tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const subtab = btn.dataset.subtab;
     document.getElementById('teamNamesTab').style.display = subtab === 'teamnames' ? '' : 'none';
@@ -2759,6 +2764,18 @@ document.querySelectorAll('.stats-subtab-btn').forEach(btn => {
     document.getElementById('h2hTab').style.display = subtab2 === 'h2h' ? '' : 'none';
     document.getElementById('powerTab').style.display = subtab2 === 'power' ? '' : 'none';
     document.getElementById('playoffsTab').style.display = subtab2 === 'playoffs' ? '' : 'none';
+    document.getElementById('medianTab').style.display = subtab2 === 'median' ? '' : 'none';
+  });
+});
+
+document.querySelectorAll('.tk-subtab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tk-subtab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const subtab3 = btn.dataset.subtab3;
+    document.getElementById('tradeTab').style.display = subtab3 === 'trade' ? '' : 'none';
+    document.getElementById('picksTab').style.display = subtab3 === 'picks' ? '' : 'none';
+    document.getElementById('keepersTab').style.display = subtab3 === 'keepers' ? '' : 'none';
   });
 });
 
@@ -4826,7 +4843,7 @@ function askAnswer(raw) {
 
   // ---- Where things live
   if (/\bpick compliance\b|\bcompliant\b|\bpick limit\b|\btraded picks\b|\bpicks? (have|has|been|were|was) (been )?traded\b/.test(lower)) {
-    return `Traded picks and each team's status against the Draft Pick Rules are in the Pick Compliance tab, live from Sleeper.`;
+    return `Traded picks and each team's status against the Draft Pick Rules are in the Pick Compliance tab (under Trades & Keepers), live from Sleeper.`;
   }
   if (/\b(weekly )?recaps?\b|\btelegraph\b/.test(lower) && !mgrs.length) {
     return `The Tobermory Telegraph lives in the Weekly Recap tab -- the newest week shows first, and the season and week selectors go back to the Draft Recap.`;
@@ -5387,7 +5404,7 @@ function renderMedianSim() {
   const foot = `<tr style="border-top:2px solid var(--line);"><td style="text-align:left;"><b>Median</b></td>${sim.weeks.map(w => `<td style="${mono}"><b>${fmt(sim.medians[w], 2)}</b></td>`).join('')}</tr>`;
   document.getElementById('medianWeeklyTable').innerHTML = head + '<tbody>' + body + foot + '</tbody>';
 }
-document.querySelector('.tab-btn[data-tab="median"]').addEventListener('click', renderMedianSim);
+document.querySelector('.stats-subtab-btn[data-subtab2="median"]').addEventListener('click', renderMedianSim);
 
 // ---------- Pick Compliance ----------
 const PICK_MIN_EARLY = 2, PICK_EARLY_ROUND = 5;
@@ -5478,7 +5495,7 @@ async function ensurePickCompliance() {
     document.getElementById('picksSummary').textContent = "Couldn't load trades from Sleeper right now -- reopen this tab to try again.";
   }
 }
-document.querySelector('.tab-btn[data-tab="picks"]').addEventListener('click', ensurePickCompliance);
+document.querySelector('.tk-subtab-btn[data-subtab3="picks"]').addEventListener('click', ensurePickCompliance);
 
 // ---------- Keeper Compliance ----------
 const KEEPER_MAX_YEARS = 3, KEEPER_DEFAULT_ROUND = 9;
@@ -5569,7 +5586,7 @@ async function ensureKeeperCompliance() {
     document.getElementById('keeperCheckSummary').textContent = "Couldn't load rosters from Sleeper right now -- reopen this tab to try again.";
   }
 }
-document.querySelector('.tab-btn[data-tab="keepers"]').addEventListener('click', ensureKeeperCompliance);
+document.querySelector('.tk-subtab-btn[data-subtab3="keepers"]').addEventListener('click', ensureKeeperCompliance);
 document.getElementById('keeperCheckManager').addEventListener('change', renderKeeperCompliance);
 
 // ---------- Trade Analyzer ----------
@@ -5682,7 +5699,7 @@ function renderCompliance() {
 
     // The 2-pick minimum in Rounds 1-5 depends on what each team holds, which this builder can't see.
     if (picks.some(p => p.round <= 5)) {
-      warnings.push(`Every team must keep at least 2 picks in Rounds 1-5 -- the Pick Compliance tab shows what each team holds now.`);
+      warnings.push(`Every team must keep at least 2 picks in Rounds 1-5 -- the Pick Compliance tab (under Trades & Keepers) shows what each team holds now.`);
     }
 
     // No-side-deals genuinely can't be checked by this tool: it's about what isn't written down.
