@@ -67,6 +67,36 @@
     {
       "q": "draft order 2020",
       "expect": "answer"
+    },
+    {
+      "q": "how is the draft order determined",
+      "expect": "answer",
+      "contains": "pick 1 is the Toilet Bowl winner"
+    },
+    {
+      "q": "how does draft order work next year",
+      "expect": "answer",
+      "contains": "the champion picks 12th"
+    },
+    {
+      "q": "what are the draft order rules",
+      "expect": "answer",
+      "contains": "From the 2027 draft on"
+    },
+    {
+      "q": "who picks first next year",
+      "expect": "answer",
+      "contains": "From the 2027 draft on"
+    },
+    {
+      "q": "draft order 2027",
+      "expect": "answer",
+      "contains": "From the 2027 draft on"
+    },
+    {
+      "q": "is the draft order random",
+      "expect": "answer",
+      "contains": "From the 2027 draft on"
     }
   ],
   "draft_date_time": [
@@ -1966,7 +1996,7 @@
     {
       "q": "longest run of wins for Jazz",
       "expect": "answer",
-      "contains": "5 straight -- (2022, Weeks 3–7)"
+      "contains": "5 straight -- (2022, Weeks 3\u20137)"
     },
     {
       "q": "Jazz's longest losing run",
