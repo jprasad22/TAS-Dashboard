@@ -2031,5 +2031,89 @@
       "expect": "answer",
       "contains": "wasn't drafted in 2013"
     }
+  ],
+  "ask_gaps_2026_11_22": [
+    {
+      "q": "what are the prizes",
+      "expect": "answer",
+      "contains": "champion $1,575"
+    },
+    {
+      "q": "how much does the champion win",
+      "expect": "answer",
+      "contains": "$1,575"
+    },
+    {
+      "q": "what is the payout",
+      "expect": "answer",
+      "contains": "most points in one week $175"
+    },
+    {
+      "q": "who won the toilet bowl last year",
+      "expect": "answer",
+      "contains": "Lucas Blair won the 2025 Toilet Bowl"
+    },
+    {
+      "q": "who won the toilet bowl this year",
+      "expect": "answer",
+      "contains": "isn't decided yet"
+    },
+    {
+      "q": "toilet bowl winner 2023",
+      "expect": "null"
+    },
+    {
+      "q": "who has won the most toilet bowls",
+      "expect": "null"
+    },
+    {
+      "q": "who lost the toilet bowl in 2025",
+      "expect": "null"
+    },
+    {
+      "q": "who has the worst record",
+      "expect": "answer",
+      "contains": "2026 last place",
+      "not_contains": "career"
+    },
+    {
+      "q": "who is in last place",
+      "expect": "answer",
+      "contains": "Lucas Blair, 1-9"
+    },
+    {
+      "q": "who has the best record",
+      "expect": "answer",
+      "contains": "2026 standings leader"
+    },
+    {
+      "q": "who has the best record all time",
+      "expect": "answer",
+      "contains": "Career"
+    },
+    {
+      "q": "worst record in 2024",
+      "expect": "answer",
+      "contains": "Gurminder Kambo, 3-11"
+    },
+    {
+      "q": "who leads the league in points against",
+      "expect": "answer",
+      "contains": "in 2026"
+    },
+    {
+      "q": "Puka Nacua keeper cost",
+      "expect": "answer",
+      "contains": "Keeper Compliance tab"
+    },
+    {
+      "q": "who is Jazz playing this week",
+      "expect": "null"
+    },
+    {
+      "q": "who won the championship",
+      "expect": "answer",
+      "contains": "Brad Harnum won the 2025 championship"
+    }
   ]
 }

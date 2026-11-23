@@ -61,8 +61,9 @@ REQUIRED_CONST_RANGES = [
     ('const PALETTE = ', ';\n'),
     ('const KEEPER_COUNTS = {', '};\n'),
     ('const KEEPER_SELECTIONS_2026 = [', '];\n'),
-    ('const LEAGUE_SETTINGS = {', '};\n'),
+    # CURRENT_SEASON first: LEAGUE_SETTINGS.prizes is built from CURRENT_SEASON.prizes (same order as index.html).
     ('const CURRENT_SEASON = {', '\n};\n'),
+    ('const LEAGUE_SETTINGS = {', '};\n'),
     ('const TICKER_STATS = {', '\n};\n'),
 ]
 
