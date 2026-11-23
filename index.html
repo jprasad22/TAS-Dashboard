@@ -1655,6 +1655,8 @@ const LEAGUE_SETTINGS = {
 
   roster: "<div class=\"settings-subhead\">Starting Lineup</div>\n<ul>\n<li><b>1</b> Quarterback (QB)</li>\n<li><b>2</b> Running Back (RB)</li>\n<li><b>2</b> Wide Receiver (WR)</li>\n<li><b>1</b> Tight End (TE)</li>\n<li><b>2</b> Flex (WR/RB/TE)</li>\n<li><b>1</b> Kicker (K)</li>\n<li><b>1</b> Defense (DEF)</li>\n</ul>\n<div class=\"settings-subhead\">Bench</div>\n<ul>\n<li><b>5</b> bench spots</li>\n</ul>\n<div class=\"settings-subhead\">Injured Reserve (IR)</div>\n<ul>\n<li><b>1</b> IR slot</li>\n<li>OUT players allowed on IR</li>\n<li>Suspended players allowed on IR</li>\n<li>NA, DNR/Holdout/Opt-out, and Doubtful players are <b>not</b> allowed on IR</li>\n</ul>",
   general: "<div class=\"settings-subhead\">League Format</div>\n<ul>\n<li>League type: <b>Keeper</b></li>\n<li><b>12</b> teams</li>\n<li>Keeper decisions due <b>1 week (7 days)</b> before the draft</li>\n</ul>\n<div class=\"settings-subhead\">Waivers</div>\n<ul>\n<li>Waiver type: <b>FAAB</b> (Free Agent Auction Budget) bidding</li>\n<li><b>$100</b> FAAB budget per season</li>\n<li>Dropped players stay on waivers for <b>1 day</b> before clearing to free agency</li>\n<li>Waivers process daily; final weekly clear is <b>Wednesdays at 3:00 AM EDT</b></li>\n</ul>\n<div class=\"settings-subhead\">Trades</div>\n<ul>\n<li><b>1-day</b> review period on pending trades</li>\n<li>Trade deadline: <b>Week 11</b></li>\n<li>Draft pick trading is <b>allowed</b></li>\n</ul>\n<div class=\"settings-subhead\">Playoffs</div>\n<ul>\n<li>Playoffs start <b>Week 15</b></li>\n<li><b>8</b> teams make the playoffs</li>\n<li>One week per playoff round</li>\n<li>Seeding: set by regular-season record; ties broken first by total points scored, then by total points scored against</li>\n<li>Non-playoff teams play in a separate <b>Consolation bracket</b></li>\n</ul>\n<div class=\"settings-subhead\">Transaction Rules</div>\n<ul>\n<li>Roster moves are <b>locked</b> until after the draft</li>\n<li>Bench players <b>can&rsquo;t be dropped</b> once their game has started</li>\n</ul>\n<div class=\"settings-subhead\">Competitive Lineup Rule (New for 2026)</div>\n<ul>\n<li>Each manager must submit their <b>highest-scoring reasonable lineup</b> every week.</li>\n<li>If a bench player is eligible for an empty starting spot, they <b>must be started</b>.</li>\n</ul>\n<div class=\"settings-subhead\">Trade Review Committee (New for 2026)</div>\n<ul>\n<li>A 4-person committee reviews trades, but may only overturn one for <b>collusion</b>, a <b>deliberate tanking arrangement</b>, or a <b>rule violation</b> \u2014 not simple fairness disagreements.</li>\n<li>If a trade involves a Committee member, the other <b>3 Committee members</b> review it instead.</li>\n</ul>\n<div class=\"settings-subhead\">Toilet Bowl Punishment (New for 2026 \u2014 TBD)</div>\n<ul>\n<li>Not yet decided. The Committee will present punishment options for the league to vote on before the draft.</li>\n<li>Intent: a known consequence to reduce incentive for intentional losing.</li>\n</ul>",
+  prizes: "<div class=\"settings-subhead\">2026 Prize Pool &mdash; $2,100 (12 teams &times; $175 league fee)</div>\n<ul>\n<li><b>Champion</b> (wins the playoffs): <b>$1,575</b></li>\n<li><b>First place, regular season</b>: <b>$350</b></li>\n<li><b>Most points in one week</b>: <b>$175</b></li>\n</ul>",
+  draftOrder: "<div class=\"settings-subhead\">From the 2027 Draft On (league vote, Nov 2026: 7&ndash;5)</div>\n<ul>\n<li>Draft order is set by the previous season&rsquo;s results, not a random draw.</li>\n<li><b>Pick 1:</b> the Toilet Bowl winner (the 4 non-playoff teams play a consolation bracket).</li>\n<li><b>Picks 2&ndash;4:</b> the rest of the Toilet Bowl, in order of finish.</li>\n<li><b>Picks 5&ndash;12:</b> the 8 playoff teams, in order of playoff finish &mdash; the champion picks 12th.</li>\n<li>Why: an anti-tanking incentive &mdash; missing the playoffs never makes losing worth it, because winning the Toilet Bowl earns the first pick.</li>\n</ul>\n<div class=\"settings-subhead\">2026 Draft</div>\n<ul>\n<li>The 2026 order was set by the F1 Dutch Grand Prix result (Aug 23, 2026).</li>\n</ul>",
   goodToKnow: "<ul>\n<li><b>The Ask tab isn&rsquo;t AI</b> &mdash; it&rsquo;s a lookup tool that recognizes known question patterns (manager names, years, stats, rules). If it doesn&rsquo;t understand something, it says so rather than guessing.</li>\n<li><b>Live data</b> (this week&rsquo;s standings and scoreboard, the NFL ticker, and 2026+ draft results) is pulled live from Sleeper (and ESPN for the NFL ticker). If their systems are slow or briefly wrong, this dashboard will reflect that.</li>\n<li><b>Standings ties stay ties, on purpose.</b> If two teams are tied on both wins and points, they&rsquo;ll show at the same rank &mdash; not resolved by points against. Same logic as a regular-season NFL game itself being allowed to end in a tie.</li>\n<li><b>The NFL ticker uses an unofficial, undocumented ESPN source.</b> It could stop working without warning &mdash; that&rsquo;s a limitation of the source, not necessarily something broken here.</li>\n<li><b>The Trade Analyzer&rsquo;s compliance checker</b> automatically checks the year rule and pick-for-pick for the trade being built right now; the Pick Compliance tab tracks every completed trade and what each team holds. It can&rsquo;t verify no-side-deals at all &mdash; confirm that manually.</li>\n<li><b>Player and pick trade values</b> come from FantasyCalc, a third-party crowd-sourced site &mdash; a reference point, not an official or binding valuation.</li>\n<li><b>2012&ndash;2025 seasons are fully validated, start to finish, including playoffs.</b> 2026 is being added week by week as it's actually played &mdash; Stats, Head-to-Head, and Power Rankings for 2026 reflect completed weeks only, and won't have a final standings/champion until the season (playoffs included) actually finishes.</li>\n</ul>",
 };
 
@@ -1670,7 +1672,7 @@ document.getElementById('seasonNumberLabel').textContent = `SEASON #${CURRENT_SE
 // "Last updated" = when this file was last changed, not page-load time. Update BUILD_DATE with
 // every change to this file. Date only, no time of day (a guessed clock time was wrong before),
 // and use the Eastern-time date -- a UTC clock shows tomorrow's date after 8 PM Eastern.
-const BUILD_DATE = "2026-11-15";
+const BUILD_DATE = "2026-11-22";
 document.getElementById('lastRefreshed').textContent = 'Last updated ' + new Date(BUILD_DATE + 'T12:00:00').toLocaleDateString('en-US', {
   month: 'short', day: 'numeric', year: 'numeric',
 });
@@ -3951,11 +3953,13 @@ function settingsSectionBody(text, emptyMsg) {
 function renderSettings() {
   const sections = [
     { key:'general', title:'General League Settings', text: LEAGUE_SETTINGS.general },
+    { key:'prizes', title:'Prizes', text: LEAGUE_SETTINGS.prizes },
     { key:'scoring', title:'Scoring Settings', text: LEAGUE_SETTINGS.scoring },
     { key:'roster', title:'Roster Settings', text: LEAGUE_SETTINGS.roster },
     { key:'keeper', title:'Keeper Settings', text: LEAGUE_SETTINGS.keeper },
     { key:'draftPickRules', title:'Draft Pick Rules', text: LEAGUE_SETTINGS.draftPickRules, emptyMsg: 'New for 2026 — rules TBD, details coming once the league finalizes them.' },
     { key:'draftRules', title:'Draft Rules', text: LEAGUE_SETTINGS.draftRules },
+    { key:'draftOrder', title:'Draft Order', text: LEAGUE_SETTINGS.draftOrder },
     { key:'goodToKnow', title:'Good to Know \u2014 Dashboard Limitations', text: LEAGUE_SETTINGS.goodToKnow },
   ];
 
@@ -5115,6 +5119,14 @@ function askAnswer(raw) {
   // determined") gets wrongly matched by the looser "when.*draft" pattern and answered with the
   // draft DATE instead. Found this by actually running the query, not by inspecting the regex.
   if (/draft order|order.*determined|who picks first|who goes first/.test(lower)) {
+    // How the order is SET (a rule question) -- answer with the rule, plus this year's actual order.
+    // Also a future draft ("next year", "2027"): that order doesn't exist until the season ends, so
+    // give the rule rather than this year's order.
+    const futureDraft = /\bnext (year|season|draft)\b/.test(lower) || (lower.match(/\b20\d\d\b/g) || []).some(y => Number(y) > CURRENT_SEASON.year);
+    if ((/\b(how|determined|decided|based|rules?|works?|set|random)\b/.test(lower) && !yr) || futureDraft) {
+      const cur = CURRENT_SEASON.draftOrder && CURRENT_SEASON.draftOrder.length ? ` The ${CURRENT_SEASON.year} order (set by the F1 Dutch Grand Prix) was: ${CURRENT_SEASON.draftOrder.join(', ')}.` : '';
+      return `From the 2027 draft on, the order comes from the previous season's results: pick 1 is the Toilet Bowl winner, picks 2-4 the rest of the Toilet Bowl in order of finish, and picks 5-12 the 8 playoff teams in order of playoff finish (the champion picks 12th).${cur}`;
+    }
     if (CURRENT_SEASON.draftOrder && CURRENT_SEASON.draftOrder.length) {
       return `${CURRENT_SEASON.year} draft order: ${CURRENT_SEASON.draftOrder.join(', ')}.`;
     }
