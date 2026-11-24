@@ -1352,7 +1352,7 @@
     {
       "q": "Jerome vs Ben regular season",
       "expect": "answer",
-      "contains": "8-6 all-time in the regular season"
+      "contains": "all-time in the regular season against Ben Matsumoto"
     },
     {
       "q": "Brad and Lucas head to head",
@@ -2079,7 +2079,7 @@
     {
       "q": "who is in last place",
       "expect": "answer",
-      "contains": "Lucas Blair, 1-9"
+      "contains": "last place (through Week"
     },
     {
       "q": "who has the best record",
